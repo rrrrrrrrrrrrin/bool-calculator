@@ -38,7 +38,7 @@ int main(int argc, char* argv[]) {
 	{
 		while (getline(input, line))
 		{
-			BooleanExpression boolexpr(line.c_str()+'\0');
+			BooleanExpression boolexpr(line.c_str());
 
 			boolexpr.table();
 			
@@ -48,7 +48,7 @@ int main(int argc, char* argv[]) {
 	{
 		while (getline(input, line))
 		{
-			BooleanExpression boolexpr(line.c_str() + '\0');
+			BooleanExpression boolexpr(line.c_str());
 
 			boolexpr.cnf();
 
@@ -58,17 +58,29 @@ int main(int argc, char* argv[]) {
 	{
 		while (getline(input, line))
 		{
-			BooleanExpression boolexpr(line.c_str() + '\0');
+			try
+			{
+				BooleanExpression boolexpr(line.c_str());
 
-			boolexpr.dnf();
+				boolexpr.dnf();
 
+				std::string result_function = boolexpr;  // via operator BooleanExpression::std::string()
+
+				output << result_function << '\n';
+
+			}
+			catch (const char* error)
+			{
+				std::cout << error;
+				return 0;
+			}
 		}
 	}
 	else if (std::strcmp(action,"-zh") == 0)
 	{
 		while (getline(input, line))
 		{
-			BooleanExpression boolexpr(line.c_str() + '\0');
+			BooleanExpression boolexpr(line.c_str());
 
 			boolexpr.zhegalkin();
 

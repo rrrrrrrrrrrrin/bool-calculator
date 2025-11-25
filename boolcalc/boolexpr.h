@@ -19,27 +19,50 @@
 class BooleanExpression
 {
 private:
-	const char* str_;
+	const char* formula_;
+
+	std::vector<char> ops = { '~', '&', 'v', '+', '>', '<', '=', '|', '^' };  // operators
 
 public:
 	BooleanExpression(const char* str)
-		: str_(str)
+		: formula_(str)
 	{
-		// Check str for validity
-		// ~ can be before xN and one of the logical operations between any xi, xj 
-		std::vector<char> operators = { '~', '&', 'v', '+', '>', '<', '=', '|', '^'};
-		char x = 'x';
+		// Check formula for validity
+
+		std::string temp;
+		temp += str;
+
+		int str_size = temp.size() - 1;
 
 		int i = 0;
-		while (str[i] != '\0')
+		while (i <= str_size)
 		{
 			char s = str[i];
-			if (s == operators[0] && (str[i + 1] == '\0' || str[i + 1] != x))
+			char x = 'x';
+
+			// Formula is at '(', check for x or '~' afterwards
+			if ( s == '(' && str[i + 1] != '~' && str[i + 1] != x )
 			{
 				throw "error";
 			}
-			else if (s == x && (str[i + 2]) == '\0' || std::find(operators.begin(), operators.end(), str[i + 2]) == operators.end() 
-				                  || str[i+4] == '\0' || str[i+4] != x)
+			// Formula is at '~', check for x afterwards
+			else if ( (s == '~') && (i + 1) == str_size && str[i + 1] != x )
+			{
+				throw "error";
+			} 
+
+
+			int i2 = (i + 2) > str_size ? str_size : i + 2;
+			int i3 = (i + 3) > str_size ? str_size : i + 3;
+			int i5 = (i + 5) > str_size ? str_size : i + 5;
+
+			// Formula is at x, check if the operator afterwards is valid (if not the end of the formula), 
+			//                  and check if there is another x after the operator 
+			//                  and check if the expression is closed with ')' (if no operator afterwards or end)
+			if (s == x  && i3 != str_size && std::find(ops.begin() + 1, ops.end(), str[i3]) == ops.end()
+				        && i5 != str_size && str[i5] != x
+				        && i3 != str_size && std::find(ops.begin(), ops.end(), str[i3]) == ops.end()
+				        && str[i2] != ')')
 			{
 				throw "error";
 			}
@@ -55,7 +78,12 @@ public:
 
 	operator std::string() const 
 	{
+		// std::string result_str(formula_); 
 
+		std::string result_str;
+		result_str += formula_;
+
+		return result_str;
 	}
 
 	bool isFullSystem(const std::vector<BooleanExpression>&);
