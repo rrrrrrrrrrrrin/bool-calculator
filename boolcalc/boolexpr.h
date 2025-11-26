@@ -29,10 +29,10 @@ public:
 	{
 		// Check formula for validity
 
-		std::string temp;
-		temp += str;
+		std::string str_temp;
+		str_temp += str;
 
-		int str_size = temp.size() - 1;
+		int str_size = str_temp.size() - 1;
 
 		int i = 0;
 		while (i <= str_size)
