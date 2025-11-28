@@ -32,9 +32,9 @@ public:
 		std::string str_temp;
 		str_temp += str;
 
-		int str_size = str_temp.size() - 1;
+		size_t str_size = str_temp.size() - 1;
 
-		int i = 0;
+		size_t i = 0;
 		while (i <= str_size)
 		{
 			char s = str[i];
@@ -52,13 +52,14 @@ public:
 			} 
 
 
-			int i2 = (i + 2) > str_size ? str_size : i + 2;
-			int i3 = (i + 3) > str_size ? str_size : i + 3;
-			int i5 = (i + 5) > str_size ? str_size : i + 5;
+			size_t i2 = (i + 2) > str_size ? str_size : i + 2;
+			size_t i3 = (i + 3) > str_size ? str_size : i + 3;
+			size_t i5 = (i + 5) > str_size ? str_size : i + 5;
 
 			// Formula is at x, check if the operator afterwards is valid (if not the end of the formula), 
 			//                  and check if there is another x after the operator 
-			//                  and check if the expression is closed with ')' (if no operator afterwards or end)
+			//                  and check if the expression is closed with ')' (if no operator afterwards or end) 
+			// (only works for x0-9)
 			if (s == x  && i3 != str_size && std::find(ops.begin() + 1, ops.end(), str[i3]) == ops.end()
 				        && i5 != str_size && str[i5] != x
 				        && i3 != str_size && std::find(ops.begin(), ops.end(), str[i3]) == ops.end()
