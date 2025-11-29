@@ -7,3 +7,5 @@ x1x2v x3v x1x2v x3~v & x1x2~v x3v & ...
 
 if x1x2+ =>
 Distribution law? Involution law?
+
+binary tree

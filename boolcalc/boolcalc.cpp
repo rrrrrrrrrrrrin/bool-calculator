@@ -62,9 +62,9 @@ int main(int argc, char* argv[]) {
 			{
 				BooleanExpression boolexpr(line.c_str());
 
-				boolexpr.dnf();
+				BooleanExpression res_boolexpr = boolexpr.dnf();
 
-				std::string result_function = boolexpr;  // via operator BooleanExpression::std::string()
+				std::string result_function = res_boolexpr;  // via operator BooleanExpression::std::string()
 
 				output << result_function << '\n';
 

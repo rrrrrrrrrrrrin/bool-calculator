@@ -1,27 +1,29 @@
-#pragma once
+п»ї#pragma once
 #include <string>
 #include <vector>
+#include <stack>
 
 /*
-		Для представления булевских выражений можно написать класс `BooleanExpression`,
-		в котором реализовать :
-		- Конструктор от `const char *`, аргументом которого является строка с булевским выражением. При ошибке в выражении конструктор генерирует исключение.
-		- Метод `BooleanExpression cnf()` строит конъюнктивную нормальную форму.
-		- Метод `BooleanExpression dnf()` строит дизъюнктивную нормальную форму.
-		- Метод `BooleanExpression zhegalkin()` — строит полином Жегалкина.
-		- Метод `std::string() table()` — строит таблицу истинности.
-		- Оператор `operator std::string() const` — формирует строку с булевским выражением.
+		Р”Р»СЏ РїСЂРµРґСЃС‚Р°РІР»РµРЅРёСЏ Р±СѓР»РµРІСЃРєРёС… РІС‹СЂР°Р¶РµРЅРёР№ РјРѕР¶РЅРѕ РЅР°РїРёСЃР°С‚СЊ РєР»Р°СЃСЃ `BooleanExpression`,
+		РІ РєРѕС‚РѕСЂРѕРј СЂРµР°Р»РёР·РѕРІР°С‚СЊ :
+		- РљРѕРЅСЃС‚СЂСѓРєС‚РѕСЂ РѕС‚ `const char *`, Р°СЂРіСѓРјРµРЅС‚РѕРј РєРѕС‚РѕСЂРѕРіРѕ СЏРІР»СЏРµС‚СЃСЏ СЃС‚СЂРѕРєР° СЃ Р±СѓР»РµРІСЃРєРёРј РІС‹СЂР°Р¶РµРЅРёРµРј. РџСЂРё РѕС€РёР±РєРµ РІ РІС‹СЂР°Р¶РµРЅРёРё РєРѕРЅСЃС‚СЂСѓРєС‚РѕСЂ РіРµРЅРµСЂРёСЂСѓРµС‚ РёСЃРєР»СЋС‡РµРЅРёРµ.
+		- РњРµС‚РѕРґ `BooleanExpression cnf()` СЃС‚СЂРѕРёС‚ РєРѕРЅСЉСЋРЅРєС‚РёРІРЅСѓСЋ РЅРѕСЂРјР°Р»СЊРЅСѓСЋ С„РѕСЂРјСѓ.
+		- РњРµС‚РѕРґ `BooleanExpression dnf()` СЃС‚СЂРѕРёС‚ РґРёР·СЉСЋРЅРєС‚РёРІРЅСѓСЋ РЅРѕСЂРјР°Р»СЊРЅСѓСЋ С„РѕСЂРјСѓ.
+		- РњРµС‚РѕРґ `BooleanExpression zhegalkin()` вЂ” СЃС‚СЂРѕРёС‚ РїРѕР»РёРЅРѕРј Р–РµРіР°Р»РєРёРЅР°.
+		- РњРµС‚РѕРґ `std::string() table()` вЂ” СЃС‚СЂРѕРёС‚ С‚Р°Р±Р»РёС†Сѓ РёСЃС‚РёРЅРЅРѕСЃС‚Рё.
+		- РћРїРµСЂР°С‚РѕСЂ `operator std::string() const` вЂ” С„РѕСЂРјРёСЂСѓРµС‚ СЃС‚СЂРѕРєСѓ СЃ Р±СѓР»РµРІСЃРєРёРј РІС‹СЂР°Р¶РµРЅРёРµРј.
 
-		Для проверки системы функций на полноту можно реализовать функцию
+		Р”Р»СЏ РїСЂРѕРІРµСЂРєРё СЃРёСЃС‚РµРјС‹ С„СѓРЅРєС†РёР№ РЅР° РїРѕР»РЅРѕС‚Сѓ РјРѕР¶РЅРѕ СЂРµР°Р»РёР·РѕРІР°С‚СЊ С„СѓРЅРєС†РёСЋ
 		bool isFullSystem(const std::vector<BooleanExpression>&);
 */
 
 class BooleanExpression
 {
 private:
-	const char* formula_;
+	std::string formula_;
 
-	std::vector<char> ops = { '~', '&', 'v', '+', '>', '<', '=', '|', '^' };  // operators
+	// Available operators in a descending priority order
+	std::vector<char> ops = { '~',  '&', 'v', '+', '|', '^', '<', '>', '=' };
 
 public:
 	BooleanExpression(const char* str)
@@ -29,47 +31,16 @@ public:
 	{
 		// Check formula for validity
 
-		std::string str_temp;
-		str_temp += str;
-
-		size_t str_size = str_temp.size() - 1;
-
-		size_t i = 0;
-		while (i <= str_size)
+		/*for (size_t i = 0; i < formula_.length(); i++)
 		{
-			char s = str[i];
-			char x = 'x';
 
-			// Formula is at '(', check for x or '~' afterwards
-			if ( s == '(' && str[i + 1] != '~' && str[i + 1] != x )
-			{
-				throw "error";
-			}
-			// Formula is at '~', check for x afterwards
-			else if ( (s == '~') && (i + 1) == str_size && str[i + 1] != x )
-			{
-				throw "error";
-			} 
-
-
-			size_t i2 = (i + 2) > str_size ? str_size : i + 2;
-			size_t i3 = (i + 3) > str_size ? str_size : i + 3;
-			size_t i5 = (i + 5) > str_size ? str_size : i + 5;
-
-			// Formula is at x, check if the operator afterwards is valid (if not the end of the formula), 
-			//                  and check if there is another x after the operator 
-			//                  and check if the expression is closed with ')' (if no operator afterwards or end) 
-			// (only works for x0-9)
-			if (s == x  && i3 != str_size && std::find(ops.begin() + 1, ops.end(), str[i3]) == ops.end()
-				        && i5 != str_size && str[i5] != x
-				        && i3 != str_size && std::find(ops.begin(), ops.end(), str[i3]) == ops.end()
-				        && str[i2] != ')')
-			{
-				throw "error";
-			}
-			++i;
-		}
+		}*/
+		
 	}
+
+	void push_operand(std::stack<char>& operators, std::stack<std::string>& operands, char op);
+	void new_operand(std::stack<char> &operators, std::stack<std::string> &operands, int idx);
+	void operand(std::stack<char>& operators, std::stack<std::string>& operands, char op);
 
 	BooleanExpression cnf();
 	BooleanExpression dnf();
@@ -79,12 +50,7 @@ public:
 
 	operator std::string() const 
 	{
-		// std::string result_str(formula_); 
-
-		std::string result_str;
-		result_str += formula_;
-
-		return result_str;
+		return formula_;
 	}
 
 	bool isFullSystem(const std::vector<BooleanExpression>&);
