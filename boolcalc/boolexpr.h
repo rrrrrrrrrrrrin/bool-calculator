@@ -38,8 +38,12 @@ public:
 		
 	}
 
+	// De Morgan's law
+	std::string de_morgan_law(std::string x);
+
+	void push_negation(std::stack<char>& operators, std::stack<std::string>& operands, char op);
 	void push_operand(std::stack<char>& operators, std::stack<std::string>& operands, char op);
-	void new_operand(std::stack<char> &operators, std::stack<std::string> &operands, int idx);
+	void new_operand(std::stack<char> &operators, std::stack<std::string> &operands, size_t idx);
 	void operand(std::stack<char>& operators, std::stack<std::string>& operands, char op);
 
 	BooleanExpression cnf();
