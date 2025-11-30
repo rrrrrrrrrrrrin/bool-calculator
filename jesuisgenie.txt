@@ -1,0 +1,8 @@
+x3 v ~x2 v ~x1
+
+~x3 v x2 v ~x1
+
+(x3 v ~x2 v ~x1) & (~x3 v x2 v ~x1)
+= x3 & ~x3 v x3 & x2 v x3 & ~x1 v ~x2 & ~x3 ...
+
+x3 & ~x3 v x3 & x2 v x3 & ~x1 v ~x2 & ~x3 v ~x2 & x2 v ~x2 & ~x1 v ~x1 & ~x1
