@@ -1,4 +1,6 @@
 #include "boolexpr.h"
+#include <cstdlib>
+#include <iostream>
 
 std::string BooleanExpression::de_morgan_law(std::string x)
 {
@@ -67,134 +69,9 @@ void BooleanExpression::push_operand(std::stack<char>& operators, std::stack<std
 	std::string y = operands.top();
 	operands.pop();
 
-	// Express logical operations in terms of '&' and 'v'. Apply a distributive law (for '&' and 'v') (use the cartesian product, i.e. nested loops for two operands x and y and push it as a new operand)
-	if (op == ops[1])  // '&'
+	if (op == ops[1])
 	{
-		if (x.length() > 3 || y.length() > 3)  // (~)x(y)N
-		{
-			std::stack<char> operators_x;
-			std::vector<std::string> operands_x;
-
-			for (size_t i = 0; i < x.length(); i++)
-			{
-				char s = x[i];
-
-				if (s == ' ')
-				{
-					++i;
-					continue;
-				}
-
-				// if the symbol is an operator
-				if (std::find(ops.begin() + 1, ops.end(), s) != ops.end())
-				{
-					operators_x.push(s);
-
-				}
-				// if the symbol is an operand
-				else
-				{
-					std::string op1;
-					op1.push_back(s);
-
-					if (s == '~')
-					{
-						char s1 = x[++i];
-						op1.push_back(s1);
-					}
-
-					if (s != '0' && s != '1')
-					{
-						char s2 = x[++i];
-						op1.push_back(s2);
-					}
-
-					operands_x.push_back(op1);
-				}
-
-				++i;
-			}
-
-			std::vector<char> operators_y;
-			std::vector<std::string> operands_y;
-
-			for (size_t i = 0; i < y.length(); i++)
-			{
-				char s = y[i];
-
-				if (s == ' ')
-				{
-					++i;
-					continue;
-				}
-
-				// if the symbol is an operator
-				if (std::find(ops.begin() + 1, ops.end(), s) != ops.end())
-				{
-					operators_y.push_back(s);
-
-				}
-				// if the symbol is an operand
-				else
-				{
-					std::string op1;
-					op1.push_back(s);
-
-					if (s == '~')
-					{
-						char s1 = y[++i];
-						op1.push_back(s1);
-					}
-
-					if (s != '0' && s != '1')
-					{
-						char s2 = y[++i];
-						op1.push_back(s2);
-					}
-
-					operands_y.push_back(op1);
-				}
-
-				++i;
-			}
-
-			std::string new_operand;
-			for (size_t i = 0; i < operands_x.size() - 1; i++)
-			{
-				std::string xi = operands_x[i];
-
-				for (size_t j = 0; j < operands_y.size() - 1; j++)
-				{
-					std::string yj = operands_y[j];
-
-					// Drop xN & ~xN(= 0), collapse (~)xN & (~)xN = (~)xN
-					if ( (xi[0] == '~' && yj[0] != '~') || (yj[0] == '~' && xi[0] != '~') )
-					{
-						new_operand.push_back(operators_y[operators_y.size() - j - 1]);
-						new_operand.push_back(' ');
-					}
-					else if (xi == yj)
-					{
-						new_operand += xi + ' ' + operators_y[operators_y.size() - j - 1] + ' ';
-					}
-					else
-					{
-						new_operand += xi + " & " + yj + ' ' + operators_y[operators_y.size() - j - 1] + ' ';
-					}
-				}
-
-				new_operand += xi + " & " + operands_y[operands_y.size() - 1] + ' ' + operators_x.top() + ' ';
-				operators_x.pop();
-			}
-
-			new_operand += operands_x[operands_x.size() - 1] + " & " + operands_y[operands_y.size() - 1];
-
-			operands.push(new_operand);
-		}
-		else
-		{
-			operands.push(x + " & " + y);
-		}
+		operands.push(x + " & " + y);
 	}
 	else if (op == ops[2])  // 'v' 
 	{
@@ -252,6 +129,20 @@ BooleanExpression BooleanExpression::cnf()
 
 BooleanExpression BooleanExpression::dnf()
 {
+	std::string dnf;
+	BooleanExpression result_dnf(dnf.c_str());
+	return result_dnf;
+}
+
+BooleanExpression BooleanExpression::zhegalkin()
+{
+	return BooleanExpression("pass");
+}
+
+std::string BooleanExpression::table()
+{
+	int N = 2;  // variables amount
+
 	std::stack<char> operators;
 	std::stack<std::string> operands;
 
@@ -321,6 +212,8 @@ BooleanExpression BooleanExpression::dnf()
 			{
 				char s1 = formula_[++i];
 				op1.push_back(s1);
+				 
+				N = s1 > N ? s1 : N;
 			}
 
 			operands.push(op1);
@@ -333,9 +226,9 @@ BooleanExpression BooleanExpression::dnf()
 	while (!operators.empty())
 	{
 		char op = operators.top();
-		if (op == ops[0]) 
+		if (op == ops[0])
 		{
-			push_negation(operators, operands); 
+			push_negation(operators, operands);
 		}
 		else
 		{
@@ -343,20 +236,17 @@ BooleanExpression BooleanExpression::dnf()
 		}
 	}
 
-	std::string dnf = operands.top();
+	std::string res;
+	char buffer[33];  // N max is 5
 
-	BooleanExpression result_dnf(dnf.c_str());
-	return result_dnf;
-}
+	// Bitmasking to iterate through numbers from 0 to 2^n,
+	// where 2^N is the amount of possible functions for N variables
+	for (int i = 0; i < (1 << N); i++)
+	{
+		std::cout << _itoa_s(i, buffer, 2) << '\n';
+	}
 
-BooleanExpression BooleanExpression::zhegalkin()
-{
-	return BooleanExpression("pass");
-}
-
-std::string BooleanExpression::table()
-{
-	return "pass";
+	return BooleanExpression(res.c_str());
 }
 
 bool BooleanExpression::isFullSystem(const std::vector<BooleanExpression>&)
