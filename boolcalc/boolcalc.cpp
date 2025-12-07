@@ -8,7 +8,7 @@ int main(int argc, char* argv[]) {
 	if (std::strcmp(action, "-h") == 0 || std::strcmp(action, "?") == 0)
 	{
 		std::cout << "Usage: boolcalc -action input_file output_file\n";
-		std::cout << "Actions\t: -table, -cnf, -dnf, -zh, -isfull";
+		std::cout << "Actions\t: -table, -cnf (technically pcnf), -dnf (technically pdnf), -zh, -isfull";
 		return 1;
 	}
 

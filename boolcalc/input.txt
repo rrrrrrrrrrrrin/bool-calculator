@@ -1,1 +1,3 @@
-(x1 v x2 v x3) & (x1 v x2 v ~x3) & (x1 v ~x2 v x3) & (x1 v ~x2 v ~x3) & (~x1 v x2 v x3) & (~x1 v x2 v ~x3) & (~x1 v ~x2 v x3)
+x1 & (x2 v ~x1)
+x1 v x3
+~x4

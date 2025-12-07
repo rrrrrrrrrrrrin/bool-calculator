@@ -48,11 +48,6 @@ void BooleanExpression::push_negation(std::stack<char>& operators, std::stack<st
 	{
 		operands.push("0");
 	}
-	// Apply the involutive law (~~x = x)
-	else if (x[0] == '~')
-	{
-		operands.push(x);
-	}
 	else
 	{
 		operands.push(de_morgan_law(x));
@@ -122,35 +117,13 @@ void BooleanExpression::new_operand(std::stack<char>& operators, std::stack<std:
 	}
 }
 
-BooleanExpression BooleanExpression::cnf()
+void BooleanExpression::build_binary_tree(std::string formula, std::stack<char>& operators, std::stack<std::string>& operands, int& N)
 {
-	return BooleanExpression("pass");
-}
-
-BooleanExpression BooleanExpression::dnf()
-{
-	std::string dnf;
-	BooleanExpression result_dnf(dnf.c_str());
-	return result_dnf;
-}
-
-BooleanExpression BooleanExpression::zhegalkin()
-{
-	return BooleanExpression("pass");
-}
-
-std::string BooleanExpression::table()
-{
-	int N = 2;  // variables amount
-
-	std::stack<char> operators;
-	std::stack<std::string> operands;
-
 	// Parse the string and build a binary tree
 	size_t i = 0;
-	while (i < formula_.length())
+	while (i < formula.length())
 	{
-		char s = formula_[i];
+		char s = formula[i];
 
 		if (s == ' ')
 		{
@@ -210,10 +183,11 @@ std::string BooleanExpression::table()
 
 			if (s != '0' && s != '1')
 			{
-				char s1 = formula_[++i];
+				char s1 = formula[++i];
 				op1.push_back(s1);
-				 
-				N = s1 > N ? s1 : N;
+
+				int N_temp = s1 - '0';
+				N = N_temp > N ? N_temp : N;
 			}
 
 			operands.push(op1);
@@ -221,29 +195,158 @@ std::string BooleanExpression::table()
 
 		++i;
 	}
+}
 
-	// Reconstruct a formula
-	while (!operators.empty())
+BooleanExpression BooleanExpression::cnf()
+{
+	return BooleanExpression("pass");
+}
+
+BooleanExpression BooleanExpression::dnf()
+{
+	std::string dnf;
+	BooleanExpression result_dnf(dnf.c_str());
+	return result_dnf;
+}
+
+BooleanExpression BooleanExpression::zhegalkin()
+{
+	return BooleanExpression("pass");
+}
+
+static void to_binary(int i, std::vector<int>& buffer)
+{
+	while (i > 0)
 	{
-		char op = operators.top();
-		if (op == ops[0])
-		{
-			push_negation(operators, operands);
-		}
-		else
-		{
-			push_operand(operators, operands, op);
-		}
+		buffer.insert(buffer.begin(), i % 2);
+		i = i / 2;
 	}
+}
+
+std::string BooleanExpression::table()
+{
+	int N = 0;  // variables amount
+
+	std::stack<char> operators;
+	std::stack<std::string> operands;
+
+	build_binary_tree(formula_, operators, operands, N);
 
 	std::string res;
-	char buffer[33];  // N max is 5
 
-	// Bitmasking to iterate through numbers from 0 to 2^n,
+	// Bitmasking to iterate through numbers from 0 to 2^N (1 << N),
 	// where 2^N is the amount of possible functions for N variables
 	for (int i = 0; i < (1 << N); i++)
 	{
-		std::cout << _itoa_s(i, buffer, 2) << '\n';
+		std::vector<int> buffer;
+		to_binary(i, buffer);
+
+		if (buffer.size() < N)
+		{
+			while (buffer.size() != N)
+			{
+				buffer.push_back(0);
+			}
+		}
+
+		/*
+			Unpack each operand, insert bool values instead
+			Change all operators: union ('v') - ||, intersection ('&') - &&
+			Construct a logical expression to get a bool result
+		*/
+		
+		std::stack<bool> func_bool;
+
+		// Construct a formula
+		while (!operators.empty())
+		{
+			char op = operators.top();
+
+			if (op == ops[0])
+			{
+				push_negation(operators, operands);
+			}
+
+			std::stack<char> operators_new;
+			std::stack<std::string> operands_new;
+
+			int temp = 0;
+			build_binary_tree(operands.top(), operators_new, operands_new, temp);
+			operands.pop();
+
+			if (operators_new.empty())
+			{
+				std::string x = operands_new.top();
+				operands_new.pop();
+
+				int val_x = x[x.size() - 1] - '0' - 1;
+
+				bool bool_x = buffer[val_x];
+
+				if (x[0] == '~') { bool_x = !bool_x; };
+
+				func_bool.push(bool_x);
+			}
+
+			while (!operators_new.empty())
+			{
+				char op = operators_new.top();
+				operators_new.pop();
+
+				if (op == ops[0])
+				{
+					push_negation(operators_new, operands_new);
+				}
+
+				std::string x = operands_new.top();
+				operands_new.pop();
+
+				std::string y = operands_new.top();
+				operands_new.pop();
+
+				// Variable's number (-1) to apply the appropriate bool value from buffer
+				int val_x = x[x.size() - 1] - '0' - 1;
+				int val_y = y[y.size() - 1] - '0' - 1;
+
+				bool bool_x = buffer[val_x];
+				bool bool_y = buffer[val_y];
+
+				if (x[0] == '~') { bool_x = !bool_x; };
+
+				if (y[0] == '~') { bool_y = !bool_y; };
+
+				if (op == ops[1])  // '&'
+				{
+					func_bool.push(bool_x && bool_y);
+				}
+				else  // 'v'
+				{
+					func_bool.push(bool_x || bool_y);
+				}
+			}
+
+			if (func_bool.size() > 1)
+			{
+				bool x = func_bool.top();
+				func_bool.pop();
+
+				bool y = func_bool.top();
+				func_bool.pop();
+
+				if (op == ops[1])  // '&'
+				{
+					func_bool.push(x && y);
+				}
+				else  // 'v'
+				{
+					func_bool.push(x || y);
+				}
+
+				operators.pop();
+			}
+		}
+
+		res.push_back(func_bool.top() ? '1' : '0');
 	}
 
 	return BooleanExpression(res.c_str());
