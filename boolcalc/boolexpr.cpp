@@ -117,7 +117,7 @@ void BooleanExpression::new_operand(std::stack<char>& operators, std::stack<std:
 	}
 }
 
-void BooleanExpression::build_binary_tree(std::string formula, std::stack<char>& operators, std::stack<std::string>& operands, int& N)
+void BooleanExpression::build_binary_tree(std::string formula, std::stack<char>& operators, std::stack<std::string>& operands, int& N, int& operand_amount)
 {
 	// Parse the string and build a binary tree
 	size_t i = 0;
@@ -188,6 +188,8 @@ void BooleanExpression::build_binary_tree(std::string formula, std::stack<char>&
 
 				int N_temp = s1 - '0';
 				N = N_temp > N ? N_temp : N;
+
+				++operand_amount;
 			}
 
 			operands.push(op1);
@@ -214,23 +216,41 @@ BooleanExpression BooleanExpression::zhegalkin()
 	return BooleanExpression("pass");
 }
 
-static void to_binary(int i, std::vector<int>& buffer)
+static void to_binary(int i, std::vector<int>& buffer, int N)
 {
 	while (i > 0)
 	{
 		buffer.insert(buffer.begin(), i % 2);
 		i = i / 2;
 	}
+
+	if (buffer.size() < N)
+	{
+		while (buffer.size() != N)
+		{
+			buffer.push_back(0);
+		}
+	}
 }
 
 std::string BooleanExpression::table()
 {
 	int N = 0;  // variables amount
+	int operand_amount = 0;
 
-	std::stack<char> operators;
-	std::stack<std::string> operands;
+	std::stack<char> operators_;
+	std::stack<std::string> operands_;
 
-	build_binary_tree(formula_, operators, operands, N);
+	build_binary_tree(formula_, operators_, operands_, N, operand_amount);
+
+	int N_initial = N;
+
+	// N can be: N <= amount of operands, if N > amount of operands ((~)xi type): N = amount
+	// Set up the buffer with initial N value to correctly refer to the buffer for any xi
+	if (N > operand_amount)
+	{
+		N = operand_amount;
+	}
 
 	std::string res;
 
@@ -238,16 +258,11 @@ std::string BooleanExpression::table()
 	// where 2^N is the amount of possible functions for N variables
 	for (int i = 0; i < (1 << N); i++)
 	{
-		std::vector<int> buffer;
-		to_binary(i, buffer);
+		std::stack<char> operators = operators_;
+		std::stack<std::string> operands = operands_;
 
-		if (buffer.size() < N)
-		{
-			while (buffer.size() != N)
-			{
-				buffer.push_back(0);
-			}
-		}
+		std::vector<int> buffer;
+		to_binary(i, buffer, N_initial);
 
 		/*
 			Unpack each operand, insert bool values instead
@@ -264,14 +279,19 @@ std::string BooleanExpression::table()
 
 			if (op == ops[0])
 			{
-				push_negation(operators, operands);
+				push_negation(operators, operands);  // => operators.pop()
+			}
+			else
+			{
+				operators.pop();
 			}
 
 			std::stack<char> operators_new;
 			std::stack<std::string> operands_new;
 
-			int temp = 0;
-			build_binary_tree(operands.top(), operators_new, operands_new, temp);
+			int temp1 = 0;
+			int temp2 = 0;
+			build_binary_tree(operands.top(), operators_new, operands_new, temp1, temp2);
 			operands.pop();
 
 			if (operators_new.empty())
@@ -291,37 +311,56 @@ std::string BooleanExpression::table()
 			while (!operators_new.empty())
 			{
 				char op = operators_new.top();
-				operators_new.pop();
 
 				if (op == ops[0])
 				{
-					push_negation(operators_new, operands_new);
+					push_negation(operators_new, operands_new);  // => operators_new.pop()
+				}
+				else
+				{
+					operators_new.pop();
 				}
 
-				std::string x = operands_new.top();
-				operands_new.pop();
-
-				std::string y = operands_new.top();
-				operands_new.pop();
-
-				// Variable's number (-1) to apply the appropriate bool value from buffer
-				int val_x = x[x.size() - 1] - '0' - 1;
-				int val_y = y[y.size() - 1] - '0' - 1;
-
-				bool bool_x = buffer[val_x];
-				bool bool_y = buffer[val_y];
-
-				if (x[0] == '~') { bool_x = !bool_x; };
-
-				if (y[0] == '~') { bool_y = !bool_y; };
-
-				if (op == ops[1])  // '&'
+				if (operators_new.empty())  // if negation was applied above
 				{
-					func_bool.push(bool_x && bool_y);
+					std::string x = operands_new.top();
+					operands_new.pop();
+
+					int val_x = x[x.size() - 1] - '0' - 1;
+
+					bool bool_x = buffer[val_x];
+
+					if (x[0] == '~') { bool_x = !bool_x; };
+
+					func_bool.push(bool_x);
 				}
-				else  // 'v'
+				else
 				{
-					func_bool.push(bool_x || bool_y);
+					std::string x = operands_new.top();
+					operands_new.pop();
+
+					std::string y = operands_new.top();
+					operands_new.pop();
+
+					// Variable's number (-1) to apply the appropriate bool value from buffer
+					int val_x = x[x.size() - 1] - '0' - 1;
+					int val_y = y[y.size() - 1] - '0' - 1;
+
+					bool bool_x = buffer[val_x];
+					bool bool_y = buffer[val_y];
+
+					if (x[0] == '~') { bool_x = !bool_x; };
+
+					if (y[0] == '~') { bool_y = !bool_y; };
+
+					if (op == ops[1])  // '&'
+					{
+						func_bool.push(bool_x && bool_y);
+					}
+					else  // 'v'
+					{
+						func_bool.push(bool_x || bool_y);
+					}
 				}
 			}
 
@@ -341,8 +380,6 @@ std::string BooleanExpression::table()
 				{
 					func_bool.push(x || y);
 				}
-
-				operators.pop();
 			}
 		}
 
