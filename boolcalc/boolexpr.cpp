@@ -1,4 +1,5 @@
 #include "boolexpr.h"
+#include <algorithm>
 #include <iostream>
 
 std::string BooleanExpression::de_morgan_law(std::string x)
@@ -223,7 +224,61 @@ BooleanExpression BooleanExpression::dnf()
 		Take a disjunction of all these conjunctions (... & ...) v (... & ...) (if there are several)
 	*/
 
+	std::string res = table(); // => called void save_buffer(...) => saved a buffer in std::vector<std::vector<int>> buffers;
+	
+	bool first = true;
+	bool conjunction1 = false;
+	bool conjunction2 = false;
 
+	// The first buffer is at idx 0 in buffers; func_bool for the first buffer is at idx 0 in res (result of truth table)
+	for (size_t i = 0; i < res.length(); i++)
+	{
+		if (res[i] == '1')
+		{
+			if (conjunction1)
+			{
+				if (first) { 
+					dnf.insert(dnf.begin(), '(');
+					first = false;
+				}
+
+				dnf.append(") v (");
+
+				conjunction2 = true;
+			}
+
+			std::vector<int> buffer = buffers[i];
+			size_t size = buffer.size();
+
+			for (size_t j = 0; j < size - 1; j++)
+			{
+				std::string xj;
+				xj.push_back('x');
+				
+				char idx = static_cast<char>((size - j) + '0');
+				xj.push_back(idx);
+
+				if (buffer[j] == 0)
+				{
+					dnf.push_back('~');
+				}
+
+				dnf.append(xj);
+				dnf.append(" & ");
+			}
+
+			if (buffer[size - 1] == 0)
+			{
+				dnf.push_back('~');
+			}
+			dnf.push_back('x');
+			dnf.push_back('1');
+
+			conjunction1 = true;
+		}
+	}
+
+	if (conjunction2) { dnf.push_back(')'); }
 
 	BooleanExpression result_dnf(dnf.c_str());
 	return result_dnf;
@@ -232,6 +287,11 @@ BooleanExpression BooleanExpression::dnf()
 BooleanExpression BooleanExpression::zhegalkin()
 {
 	return BooleanExpression("pass");
+}
+
+void BooleanExpression::save_buffer(std::vector<int> buffer)
+{
+	buffers.push_back(buffer);
 }
 
 static void to_binary(int i, std::vector<int>& buffer, int N)
@@ -409,6 +469,10 @@ std::string BooleanExpression::table()
 			}
 		}
 
+		// Save buffer (bools of variables) for each bool resulting function for dnf, cnf and zhegalkin
+		save_buffer(buffer);
+
+		// Add the bool function value to the truth table
 		res.push_back(func_bool.top() ? '1' : '0');
 	}
 

@@ -51,6 +51,9 @@ public:
 	BooleanExpression dnf();
 	BooleanExpression zhegalkin();
 
+	std::vector<std::vector<int>> buffers;
+	void save_buffer(std::vector<int> buffer);
+
 	std::string table();
 
 	operator std::string() const 
