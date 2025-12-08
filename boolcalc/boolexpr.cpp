@@ -1,5 +1,4 @@
 #include "boolexpr.h"
-#include <cstdlib>
 #include <iostream>
 
 std::string BooleanExpression::de_morgan_law(std::string x)
@@ -201,12 +200,31 @@ void BooleanExpression::build_binary_tree(std::string formula, std::stack<char>&
 
 BooleanExpression BooleanExpression::cnf()
 {
-	return BooleanExpression("pass");
+	std::string cnf;
+
+	/*
+		Constructing a cnf: take disjunctions of variables (xi type) in the power of true or false respectfully,
+		when the function is FALSE in the truth table (for that need to know that iteration's buffer)
+		Take a conjunction of all these disjunctions (... v ...) & (... v ...) (if there are several)
+	*/
+
+
+	BooleanExpression result_cnf(cnf.c_str());
+	return result_cnf;
 }
 
 BooleanExpression BooleanExpression::dnf()
 {
 	std::string dnf;
+
+	/*
+		Constructing a dnf: take conjunctions of variables (xi type) in the power of true or false respectfully,
+		when the function is TRUE in the truth table (for that need to know that iteration's buffer)
+		Take a disjunction of all these conjunctions (... & ...) v (... & ...) (if there are several)
+	*/
+
+
+
 	BooleanExpression result_dnf(dnf.c_str());
 	return result_dnf;
 }
@@ -231,6 +249,21 @@ static void to_binary(int i, std::vector<int>& buffer, int N)
 			buffer.push_back(0);
 		}
 	}
+}
+
+void push_bool_x(std::stack<std::string>& operands, std::stack<bool>& func_bool, std::vector<int> buffer, int N_initial)
+{
+	std::string x = operands.top();
+	operands.pop();
+
+	// Variable's number (max is at index 0, min is at N_initial) to apply the appropriate bool value from buffer
+	int val_x = N_initial - (x[x.size() - 1] - '0');
+
+	bool bool_x = buffer[val_x];
+
+	if (x[0] == '~') { bool_x = !bool_x; };
+
+	func_bool.push(bool_x);
 }
 
 std::string BooleanExpression::table()
@@ -281,10 +314,6 @@ std::string BooleanExpression::table()
 			{
 				push_negation(operators, operands);  // => operators.pop()
 			}
-			else
-			{
-				operators.pop();
-			}
 
 			std::stack<char> operators_new;
 			std::stack<std::string> operands_new;
@@ -294,66 +323,56 @@ std::string BooleanExpression::table()
 			build_binary_tree(operands.top(), operators_new, operands_new, temp1, temp2);
 			operands.pop();
 
-			if (operators_new.empty())
+			if (operators_new.empty())  // operand didn't need to be unpacked
 			{
-				std::string x = operands_new.top();
-				operands_new.pop();
-
-				int val_x = x[x.size() - 1] - '0' - 1;
-
-				bool bool_x = buffer[val_x];
-
-				if (x[0] == '~') { bool_x = !bool_x; };
-
-				func_bool.push(bool_x);
+				push_bool_x(operands_new, func_bool, buffer, N_initial);
 			}
 
 			while (!operators_new.empty())
 			{
-				char op = operators_new.top();
+				char op_new = operators_new.top();
 
-				if (op == ops[0])
+				if (op_new == ops[0])
 				{
-					push_negation(operators_new, operands_new);  // => operators_new.pop()
-				}
-				else
-				{
-					operators_new.pop();
+					push_negation(operators_new, operands_new);  // => operators_new.pop(), pushed a new (negated) operand to operands_new
 				}
 
-				if (operators_new.empty())  // if negation was applied above
+				if (operators_new.empty())  // if negation was applied above, push the new negated operand to func_bool
 				{
-					std::string x = operands_new.top();
-					operands_new.pop();
-
-					int val_x = x[x.size() - 1] - '0' - 1;
-
-					bool bool_x = buffer[val_x];
-
-					if (x[0] == '~') { bool_x = !bool_x; };
-
-					func_bool.push(bool_x);
+					push_bool_x(operands_new, func_bool, buffer, N_initial);
 				}
 				else
 				{
 					std::string x = operands_new.top();
 					operands_new.pop();
 
-					std::string y = operands_new.top();
-					operands_new.pop();
-
-					// Variable's number (-1) to apply the appropriate bool value from buffer
-					int val_x = x[x.size() - 1] - '0' - 1;
-					int val_y = y[y.size() - 1] - '0' - 1;
+					int val_x = N_initial - (x[x.size() - 1] - '0');
 
 					bool bool_x = buffer[val_x];
-					bool bool_y = buffer[val_y];
 
 					if (x[0] == '~') { bool_x = !bool_x; };
 
-					if (y[0] == '~') { bool_y = !bool_y; };
 
-					if (op == ops[1])  // '&'
+					bool bool_y = 0;
+
+					if (operands_new.size() > 1)
+					{
+						std::string y = operands_new.top();
+						operands_new.pop();
+
+						int val_y = N_initial - (y[y.size() - 1] - '0');
+
+						bool_y = buffer[val_y];
+
+						if (y[0] == '~') { bool_y = !bool_y; };
+					}
+					else
+					{
+						bool_y = func_bool.top();
+						func_bool.pop();
+					}
+
+					if (op_new == ops[1])  // '&'
 					{
 						func_bool.push(bool_x && bool_y);
 					}
@@ -361,11 +380,18 @@ std::string BooleanExpression::table()
 					{
 						func_bool.push(bool_x || bool_y);
 					}
+
+					operators_new.pop();
 				}
 			}
 
 			if (func_bool.size() > 1)
 			{
+				if (op != ops[0])  // if op == ops[0] ('~'), operators already popped it
+				{
+					operators.pop();
+				}
+
 				bool x = func_bool.top();
 				func_bool.pop();
 

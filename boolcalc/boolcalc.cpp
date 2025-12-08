@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) {
 		{
 			BooleanExpression boolexpr(line.c_str());
 
-			boolexpr.table();
+			output << boolexpr.table() << '\n';
 			
 		}
 	}
