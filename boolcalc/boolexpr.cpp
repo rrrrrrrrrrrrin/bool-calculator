@@ -253,10 +253,6 @@ BooleanExpression BooleanExpression::dnf()
 			// Variables are sorted by indexes in an ascending order (x1 bool value is at position size-1 in buffer, etc.)
 			for (size_t j = size - 1; j > 0; j--)
 			{
-				if (buffer[j] == -1)
-				{
-					continue;
-				}
 
 				std::string xj;
 				xj.push_back('x');
@@ -304,7 +300,7 @@ static void to_binary(int i, std::vector<int>& buffer, int N)
 {
 	while (i > 0)
 	{
-		buffer.insert(buffer.begin(), i % 2);
+		buffer.push_back(i % 2);
 		i = i / 2;
 	}
 
@@ -317,13 +313,23 @@ static void to_binary(int i, std::vector<int>& buffer, int N)
 	}
 }
 
-void push_bool_x(std::stack<std::string>& operands, std::stack<bool>& func_bool, std::vector<int> buffer, int N_initial)
+void push_bool_x(std::stack<std::string>& operands, std::stack<bool>& func_bool, std::vector<int> buffer, int N, int N_initial)
 {
 	std::string x = operands.top();
 	operands.pop();
 
-	// Variable's number (max is at index 0, min is at N_initial) to apply the appropriate bool value from buffer
-	int val_x = N_initial - (x[x.size() - 1] - '0');
+	int idx_x = x[x.size() - 1] - '0';
+
+	// Variable's number (max is at index 0, min is at N) to apply the appropriate bool value from buffer
+	int val_x = 0;
+	if (idx_x <= N)
+	{
+		val_x = N - idx_x;
+	}
+	else  // idx_x > N
+	{
+		val_x = N_initial - idx_x;
+	}
 
 	bool bool_x = buffer[val_x];
 
@@ -361,7 +367,7 @@ std::string BooleanExpression::table()
 		std::stack<std::string> operands = operands_;
 
 		std::vector<int> buffer;
-		to_binary(i, buffer, N_initial);
+		to_binary(i, buffer, N);
 
 		/*
 			Unpack each operand, insert bool values instead
@@ -391,7 +397,7 @@ std::string BooleanExpression::table()
 
 			if (operators_new.empty())  // operand didn't need to be unpacked
 			{
-				push_bool_x(operands_new, func_bool, buffer, N_initial);
+				push_bool_x(operands_new, func_bool, buffer, N, N_initial);
 			}
 
 			while (!operators_new.empty())
@@ -405,14 +411,24 @@ std::string BooleanExpression::table()
 
 				if (operators_new.empty())  // if negation was applied above, push the new negated operand to func_bool
 				{
-					push_bool_x(operands_new, func_bool, buffer, N_initial);
+					push_bool_x(operands_new, func_bool, buffer, N, N_initial);
 				}
 				else
 				{
 					std::string x = operands_new.top();
 					operands_new.pop();
 
-					int val_x = N_initial - (x[x.size() - 1] - '0');
+					int idx_x = x[x.size() - 1] - '0';
+
+					int val_x = 0;
+					if (idx_x <= N)
+					{
+						val_x = N - idx_x;
+					}
+					else
+					{
+						val_x = N_initial - idx_x;
+					}
 
 					bool bool_x = buffer[val_x];
 
@@ -426,7 +442,17 @@ std::string BooleanExpression::table()
 						std::string y = operands_new.top();
 						operands_new.pop();
 
-						int val_y = N_initial - (y[y.size() - 1] - '0');
+						int idx_y = y[y.size() - 1] - '0';
+
+						int val_y = 0;
+						if (idx_y <= N)
+						{
+							val_y = N - idx_y;
+						}
+						else
+						{
+							val_y = N_initial - idx_y;
+						}
 
 						bool_y = buffer[val_y];
 
