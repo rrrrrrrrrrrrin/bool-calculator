@@ -250,8 +250,14 @@ BooleanExpression BooleanExpression::dnf()
 			std::vector<int> buffer = buffers[i];
 			size_t size = buffer.size();
 
-			for (size_t j = 0; j < size - 1; j++)
+			// Variables are sorted by indexes in an ascending order (x1 bool value is at position size-1 in buffer, etc.)
+			for (size_t j = size - 1; j > 0; j--)
 			{
+				if (buffer[j] == -1)
+				{
+					continue;
+				}
+
 				std::string xj;
 				xj.push_back('x');
 				
@@ -267,12 +273,12 @@ BooleanExpression BooleanExpression::dnf()
 				dnf.append(" & ");
 			}
 
-			if (buffer[size - 1] == 0)
+			if (buffer[0] == 0)
 			{
 				dnf.push_back('~');
 			}
 			dnf.push_back('x');
-			dnf.push_back('1');
+			dnf.push_back(size + '0');
 
 			conjunction1 = true;
 		}
