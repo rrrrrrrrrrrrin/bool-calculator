@@ -45,7 +45,9 @@ public:
 	void push_operand(std::stack<char>& operators, std::stack<std::string>& operands, char op);
 	void new_operand(std::stack<char> &operators, std::stack<std::string> &operands, char op_previous, char op_current);
 
-	void build_binary_tree(std::string formula, std::stack<char>& operators, std::stack<std::string>& operands, int& N, int& operand_amount);
+	std::vector<char> vals_;
+	void build_binary_tree(std::string formula, std::stack<char>& operators, std::stack<std::string>& operands, int& N, std::vector<char>& vals);
+	void save_vals(std::vector<char> vals);
 
 	BooleanExpression cnf();
 	BooleanExpression dnf();

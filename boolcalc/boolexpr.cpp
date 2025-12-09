@@ -117,7 +117,7 @@ void BooleanExpression::new_operand(std::stack<char>& operators, std::stack<std:
 	}
 }
 
-void BooleanExpression::build_binary_tree(std::string formula, std::stack<char>& operators, std::stack<std::string>& operands, int& N, int& operand_amount)
+void BooleanExpression::build_binary_tree(std::string formula, std::stack<char>& operators, std::stack<std::string>& operands, int& N, std::vector<char>& vals)
 {
 	// Parse the string and build a binary tree
 	size_t i = 0;
@@ -189,7 +189,10 @@ void BooleanExpression::build_binary_tree(std::string formula, std::stack<char>&
 				int N_temp = s1 - '0';
 				N = N_temp > N ? N_temp : N;
 
-				++operand_amount;
+				if (std::find(vals.begin(), vals.end(), s1) == vals.end())
+				{
+					vals.push_back(s1);
+				}
 			}
 
 			operands.push(op1);
@@ -224,8 +227,14 @@ BooleanExpression BooleanExpression::dnf()
 		Take a disjunction of all these conjunctions (... & ...) v (... & ...) (if there are several)
 	*/
 
-	std::string res = table(); // => called void save_buffer(...) => saved a buffer in std::vector<std::vector<int>> buffers;
+	std::string res = table(); 
+	// => called void save_buffer(...) => saved a buffer in std::vector<std::vector<int>> buffers;
+	// and occured variables in std::vector<char> vals
 	
+	// sort vals_ by int values of contents in an descending order
+	auto sort_func = [](char val1, char val2) { return (val1 - '0') > (val2 - '0'); }; 
+	std::sort(vals_.begin(), vals_.end(), sort_func);
+
 	bool first = true;
 	bool conjunction1 = false;
 	bool conjunction2 = false;
@@ -250,15 +259,19 @@ BooleanExpression BooleanExpression::dnf()
 			std::vector<int> buffer = buffers[i];
 			size_t size = buffer.size();
 
-			// Variables are sorted by indexes in an ascending order (x1 bool value is at position size-1 in buffer, etc.)
+			// Variables are sorted by indexes in an ascending order (max i (x_i) bool value is at position 0 in buffer, etc.)
+
+			/*
+				buffer: idxs: 0 <- max variable, N-1 <- min variable
+				vals_: idxs: 0 <- max var, N-1 <- min var
+			*/
+
 			for (size_t j = size - 1; j > 0; j--)
 			{
-
 				std::string xj;
 				xj.push_back('x');
 				
-				char idx = static_cast<char>((size - j) + '0');
-				xj.push_back(idx);
+				xj.push_back(vals_[j]);
 
 				if (buffer[j] == 0)
 				{
@@ -274,7 +287,7 @@ BooleanExpression BooleanExpression::dnf()
 				dnf.push_back('~');
 			}
 			dnf.push_back('x');
-			dnf.push_back(size + '0');
+			dnf.push_back(vals_[0]);
 
 			conjunction1 = true;
 		}
@@ -289,6 +302,11 @@ BooleanExpression BooleanExpression::dnf()
 BooleanExpression BooleanExpression::zhegalkin()
 {
 	return BooleanExpression("pass");
+}
+
+void BooleanExpression::save_vals(std::vector<char> vals)
+{
+	vals_ = vals;
 }
 
 void BooleanExpression::save_buffer(std::vector<int> buffer)
@@ -320,7 +338,7 @@ void push_bool_x(std::stack<std::string>& operands, std::stack<bool>& func_bool,
 
 	int idx_x = x[x.size() - 1] - '0';
 
-	// Variable's number (max is at index 0, min is at N) to apply the appropriate bool value from buffer
+	// Variable's number (min is at index N, max is at 0) to apply the appropriate bool value from buffer
 	int val_x = 0;
 	if (idx_x <= N)
 	{
@@ -341,12 +359,16 @@ void push_bool_x(std::stack<std::string>& operands, std::stack<bool>& func_bool,
 std::string BooleanExpression::table()
 {
 	int N = 0;  // variables amount
-	int operand_amount = 0;
+	std::vector<char> vals;
 
 	std::stack<char> operators_;
 	std::stack<std::string> operands_;
 
-	build_binary_tree(formula_, operators_, operands_, N, operand_amount);
+	build_binary_tree(formula_, operators_, operands_, N, vals);
+
+	save_vals(vals);
+
+	int operand_amount = vals.size();
 
 	int N_initial = N;
 
@@ -391,8 +413,8 @@ std::string BooleanExpression::table()
 			std::stack<std::string> operands_new;
 
 			int temp1 = 0;
-			int temp2 = 0;
-			build_binary_tree(operands.top(), operators_new, operands_new, temp1, temp2);
+			std::vector<char> vals_temp;
+			build_binary_tree(operands.top(), operators_new, operands_new, temp1, vals_temp);
 			operands.pop();
 
 			if (operators_new.empty())  // operand didn't need to be unpacked
