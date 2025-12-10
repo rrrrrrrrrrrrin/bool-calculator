@@ -100,20 +100,6 @@ void BooleanExpression::push_operand(std::stack<char>& operators, std::stack<std
 	operators.pop();
 }
 
-void BooleanExpression::new_operand(std::stack<char>& operators, std::stack<std::string>& operands, char op_previous, char op_current)
-{
-	/*
-		Put operands in their stack, calculating new operands if needed, based on priority of operations:
-		if a current operator has a lesser priority than a previous one, calculate a new operand, put in operands
-	*/
-
-	// The lesser the index, the higher the priority
-	if (std::find(ops.begin(), ops.end(), op_previous) < std::find(ops.begin(), ops.end(), op_current))
-	{
-		push_operand(operators, operands, op_previous);
-	}
-}
-
 void BooleanExpression::build_binary_tree(std::string formula, std::stack<char>& operators, std::stack<std::string>& operands, int& N, std::vector<char>& vals)
 {
 	// Parse the string and build a binary tree
@@ -138,18 +124,43 @@ void BooleanExpression::build_binary_tree(std::string formula, std::stack<char>&
 				continue;
 			}
 
-			char op = operators.top();
-			if (op == ops[0])
+			char op_previous = operators.top();
+
+			/*
+				Put operands in their stack, calculating new operands if needed, based on priority of operations:
+				if a current operator has a lesser priority than a previous one, calculate a new operand, put in operands
+			*/
+
+			char op_current = s;
+
+			// The lesser the index, the higher the priority
+			// op_previous is the previous operand, op_current is the current operand, s — we push to operators
+			while (std::find(ops.begin(), ops.end(), op_previous) < std::find(ops.begin(), ops.end(), op_current))
 			{
-				push_negation(operators, operands);
-			}
-			else
-			{
-				new_operand(operators, operands, op, s);
+				if (op_previous == ops[0])
+				{
+					push_negation(operators, operands);
+
+					// op_current stays the same, op_previous is the top of operators
+				}
+				else
+				{
+					push_operand(operators, operands, op_previous);
+
+					op_current = op_previous;  // if op_current == op_previous, it won't push anything
+				}
+
+				if (!operators.empty()) 
+				{ 
+					op_previous = operators.top();
+				}
+				else
+				{
+					break;  // don't loop with the same op_previous and op_current
+				}
 			}
 
 			operators.push(s);  // push the current operator
-
 		}
 		// If the expression is in '()', it is calculated and put in operands
 		else if (s == '(')
