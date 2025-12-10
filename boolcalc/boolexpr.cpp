@@ -74,7 +74,7 @@ void BooleanExpression::push_operand(std::stack<char>& operators, std::stack<std
 	}
 	else if (op == ops[3])  // '+'
 	{
-		operands.push(x + " & " + de_morgan_law(y) + " v " + de_morgan_law(x) + " & " + y);
+		operands.push(x + " + " + y);
 	}
 	else if (op == ops[4])  // '|'
 	{
@@ -94,10 +94,7 @@ void BooleanExpression::push_operand(std::stack<char>& operators, std::stack<std
 	}
 	else if (op == ops[8])  // '='
 	{
-		// operands.push('(' + de_morgan_law(x) + " & " + de_morgan_law(y) + ')' + " v " + '(' + x + " & " + y + ')');
-		operators.push('v');
-		operands.push(de_morgan_law(x) + " & " + de_morgan_law(y));
-		operands.push(x + " & " + y);
+		operands.push(x + " = " + y);
 	}
 
 	operators.pop();
@@ -227,12 +224,12 @@ BooleanExpression BooleanExpression::dnf()
 		Take a disjunction of all these conjunctions (... & ...) v (... & ...) (if there are several)
 	*/
 
-	std::string res = table(); 
+	std::string res = table();
 	// => called void save_buffer(...) => saved a buffer in std::vector<std::vector<int>> buffers;
 	// and occured variables in std::vector<char> vals
-	
+
 	// sort vals_ by int values of contents in an descending order
-	auto sort_func = [](char val1, char val2) { return (val1 - '0') > (val2 - '0'); }; 
+	auto sort_func = [](char val1, char val2) { return (val1 - '0') > (val2 - '0'); };
 	std::sort(vals_.begin(), vals_.end(), sort_func);
 
 	bool first = true;
@@ -246,7 +243,7 @@ BooleanExpression BooleanExpression::dnf()
 		{
 			if (conjunction1)
 			{
-				if (first) { 
+				if (first) {
 					dnf.insert(dnf.begin(), '(');
 					first = false;
 				}
@@ -270,7 +267,7 @@ BooleanExpression BooleanExpression::dnf()
 			{
 				std::string xj;
 				xj.push_back('x');
-				
+
 				xj.push_back(vals_[j]);
 
 				if (buffer[j] == 0)
@@ -396,7 +393,7 @@ std::string BooleanExpression::table()
 			Change all operators: union ('v') - ||, intersection ('&') - &&
 			Construct a logical expression to get a bool result
 		*/
-		
+
 		std::stack<bool> func_bool;
 
 		// Construct a formula
@@ -437,6 +434,8 @@ std::string BooleanExpression::table()
 				}
 				else
 				{
+					op_new = operators_new.top();  // negation was part of the operand, take another operator to move forward
+
 					std::string x = operands_new.top();
 					operands_new.pop();
 
@@ -486,13 +485,22 @@ std::string BooleanExpression::table()
 						func_bool.pop();
 					}
 
+					// The operand is unpacked by build_binary_tree() => op_new is either '&', 'v', '+' or '='
 					if (op_new == ops[1])  // '&'
 					{
 						func_bool.push(bool_x && bool_y);
 					}
-					else  // 'v'
+					else if (op_new == ops[2]) // 'v'
 					{
 						func_bool.push(bool_x || bool_y);
+					}
+					else if (op == ops[3])  // '+'
+					{
+						func_bool.push(bool_x ^ bool_y);
+					}
+					else if (op == ops[8])  // '='
+					{
+						func_bool.push(bool_x == bool_y);
 					}
 
 					operators_new.pop();
@@ -503,6 +511,7 @@ std::string BooleanExpression::table()
 			{
 				if (op != ops[0])  // if op == ops[0] ('~'), operators already popped it
 				{
+					op = operators.top();
 					operators.pop();
 				}
 
@@ -516,9 +525,33 @@ std::string BooleanExpression::table()
 				{
 					func_bool.push(x && y);
 				}
-				else  // 'v'
+				else if (op == ops[2]) // 'v'
 				{
 					func_bool.push(x || y);
+				}
+				else if (op == ops[3])  // '+'
+				{
+					func_bool.push(x ^ y);
+				}
+				else if (op == ops[4])  // '|'
+				{
+					func_bool.push(!x || !y);
+				}
+				else if (op == ops[5])  // '^'
+				{
+					func_bool.push(!x && !y);
+				}
+				else if (op == ops[6])  // '<'
+				{
+					func_bool.push(x || !y);
+				}
+				else if (op == ops[7])  // '>'
+				{
+					func_bool.push(!x || y);
+				}
+				else if (op == ops[8])  // '='
+				{
+					func_bool.push(x == y);
 				}
 			}
 		}
