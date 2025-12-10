@@ -41,7 +41,6 @@ int main(int argc, char* argv[]) {
 			BooleanExpression boolexpr(line.c_str());
 
 			output << boolexpr.table() << '\n';
-			
 		}
 	}
 	else if (std::strcmp(action, "-cnf") == 0)
@@ -50,8 +49,11 @@ int main(int argc, char* argv[]) {
 		{
 			BooleanExpression boolexpr(line.c_str());
 
-			boolexpr.cnf();
+			BooleanExpression res_boolexpr = boolexpr.cnf();
 
+			std::string result_function = res_boolexpr;  // via operator BooleanExpression::std::string()
+
+			output << result_function << '\n';
 		}
 	}
 	else if (std::strcmp(action, "-dnf") == 0)
@@ -67,7 +69,6 @@ int main(int argc, char* argv[]) {
 				std::string result_function = res_boolexpr;  // via operator BooleanExpression::std::string()
 
 				output << result_function << '\n';
-
 			}
 			catch (const char* error)
 			{
@@ -83,7 +84,6 @@ int main(int argc, char* argv[]) {
 			BooleanExpression boolexpr(line.c_str());
 
 			boolexpr.zhegalkin();
-
 		}
 	}
 	else if (std::strcmp(action, "-isfull") == 0)

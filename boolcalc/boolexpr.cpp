@@ -1,5 +1,5 @@
 #include "boolexpr.h"
-#include <algorithm>
+#include <algorithm>  // for std::sort
 #include <iostream>
 
 std::string BooleanExpression::de_morgan_law(std::string x)
@@ -204,11 +204,88 @@ BooleanExpression BooleanExpression::cnf()
 	std::string cnf;
 
 	/*
-		Constructing a cnf: take disjunctions of variables (xi type) in the power of true or false respectfully,
+		Constructing a cnf: take disjunctions of variables (xi type) in the power of true or false respectfully 
+		(if in the buffer for xi, 1 is saved => ~xi),
 		when the function is FALSE in the truth table (for that need to know that iteration's buffer)
 		Take a conjunction of all these disjunctions (... v ...) & (... v ...) (if there are several)
 	*/
 
+	std::string res = table();
+	// => called void save_buffer(...) => saved a buffer in std::vector<std::vector<int>> buffers;
+	// and occured variables in std::vector<char> vals
+
+	// Sort vals_ by int values of contents in an descending order
+	if (!vals_.empty())
+	{
+		auto sort_func = [](char val1, char val2) { return (val1 - '0') > (val2 - '0'); };
+		std::sort(vals_.begin(), vals_.end(), sort_func);
+	}
+	else
+	{
+		cnf = res;
+		BooleanExpression result_cnf(cnf.c_str());
+		return result_cnf;
+	}
+
+	bool first = true;
+	bool conjunction1 = false;
+	bool conjunction2 = false;
+
+	// The first buffer is at idx 0 in buffers; func_bool for the first buffer is at idx 0 in res (result of truth table)
+	for (size_t i = 0; i < res.length(); i++)
+	{
+		if (res[i] == '0')
+		{
+			if (conjunction1)
+			{
+				if (first) {
+					cnf.insert(cnf.begin(), '(');
+					first = false;
+				}
+
+				cnf.append(") & (");
+
+				conjunction2 = true;
+			}
+
+			std::vector<int> buffer = buffers[i];
+			size_t size = buffer.size();
+
+			// Variables are sorted by indexes in an ascending order (max i (x_i) bool value is at position 0 in buffer, etc.)
+
+			/*
+				buffer: idxs: 0 <- max variable, N-1 <- min variable
+				vals_: idxs: 0 <- max var, N-1 <- min var
+			*/
+
+			for (size_t j = size - 1; j > 0; j--)
+			{
+				std::string xj;
+				xj.push_back('x');
+
+				xj.push_back(vals_[j]);
+
+				if (buffer[j] == 1)
+				{
+					cnf.push_back('~');
+				}
+
+				cnf.append(xj);
+				cnf.append(" v ");
+			}
+
+			if (buffer[0] == 1)
+			{
+				cnf.push_back('~');
+			}
+			cnf.push_back('x');
+			cnf.push_back(vals_[0]);
+
+			conjunction1 = true;
+		}
+	}
+
+	if (conjunction2) { cnf.push_back(')'); }
 
 	BooleanExpression result_cnf(cnf.c_str());
 	return result_cnf;
@@ -220,6 +297,7 @@ BooleanExpression BooleanExpression::dnf()
 
 	/*
 		Constructing a dnf: take conjunctions of variables (xi type) in the power of true or false respectfully,
+		(if in the buffer for xi, 0 is saved => ~xi),
 		when the function is TRUE in the truth table (for that need to know that iteration's buffer)
 		Take a disjunction of all these conjunctions (... & ...) v (... & ...) (if there are several)
 	*/
@@ -228,9 +306,18 @@ BooleanExpression BooleanExpression::dnf()
 	// => called void save_buffer(...) => saved a buffer in std::vector<std::vector<int>> buffers;
 	// and occured variables in std::vector<char> vals
 
-	// sort vals_ by int values of contents in an descending order
-	auto sort_func = [](char val1, char val2) { return (val1 - '0') > (val2 - '0'); };
-	std::sort(vals_.begin(), vals_.end(), sort_func);
+	// Sort vals_ by int values of contents in an descending order
+	if (!vals_.empty())
+	{
+		auto sort_func = [](char val1, char val2) { return (val1 - '0') > (val2 - '0'); };
+		std::sort(vals_.begin(), vals_.end(), sort_func);
+	}
+	else
+	{
+		dnf = res;
+		BooleanExpression result_dnf(dnf.c_str());
+		return result_dnf;
+	}
 
 	bool first = true;
 	bool conjunction1 = false;
@@ -333,22 +420,47 @@ void push_bool_x(std::stack<std::string>& operands, std::stack<bool>& func_bool,
 	std::string x = operands.top();
 	operands.pop();
 
-	int idx_x = x[x.size() - 1] - '0';
+	bool bool_x = 0;
 
-	// Variable's number (min is at index N, max is at 0) to apply the appropriate bool value from buffer
-	int val_x = 0;
-	if (idx_x <= N)
+	if (buffer.empty())
 	{
-		val_x = N - idx_x;
+		if (x == "0")
+		{
+			bool_x = 0;
+		}
+		else if (x == "1")
+		{
+			bool_x = 1;
+		}
 	}
-	else  // idx_x > N
+	else
 	{
-		val_x = N_initial - idx_x;
+		int idx_x = x[x.size() - 1] - '0';
+
+		// Variable's number (min is at index N, max is at 0) to apply the appropriate bool value from buffer
+		int val_x = 0;
+		if (idx_x <= N)
+		{
+			val_x = N - idx_x;
+		}
+		else  // idx_x > N
+		{
+			val_x = N_initial - idx_x;
+		}
+
+		bool_x = buffer[val_x];
+
+		if (x[0] == '~') { bool_x = !bool_x; };
+
+		if (x == "0")
+		{
+			bool_x = 0;
+		}
+		else if (x == "1")
+		{
+			bool_x = 1;
+		}
 	}
-
-	bool bool_x = buffer[val_x];
-
-	if (x[0] == '~') { bool_x = !bool_x; };
 
 	func_bool.push(bool_x);
 }
@@ -436,48 +548,103 @@ std::string BooleanExpression::table()
 				{
 					op_new = operators_new.top();  // negation was part of the operand, take another operator to move forward
 
-					std::string x = operands_new.top();
-					operands_new.pop();
+					bool bool_x = 0;
 
-					int idx_x = x[x.size() - 1] - '0';
-
-					int val_x = 0;
-					if (idx_x <= N)
+					if (!operands_new.empty())
 					{
-						val_x = N - idx_x;
+						std::string x = operands_new.top();
+						operands_new.pop();
+
+						if (buffer.empty())
+						{
+							if (x == "0")
+							{
+								bool_x = 0;
+							}
+							else if (x == "1")
+							{
+								bool_x = 1;
+							}
+						}
+						else
+						{
+							int idx_x = x[x.size() - 1] - '0';
+
+							int val_x = 0;
+							if (idx_x <= N)
+							{
+								val_x = N - idx_x;
+							}
+							else
+							{
+								val_x = N_initial - idx_x;
+							}
+
+							bool_x = buffer[val_x];
+
+							if (x[0] == '~') { bool_x = !bool_x; };
+
+							if (x == "0")
+							{
+								bool_x = 0;
+							}
+							else if (x == "1")
+							{
+								bool_x = 1;
+							}
+						}
 					}
 					else
 					{
-						val_x = N_initial - idx_x;
+						bool_x = func_bool.top();
+						func_bool.pop();
 					}
-
-					bool bool_x = buffer[val_x];
-
-					if (x[0] == '~') { bool_x = !bool_x; };
-
 
 					bool bool_y = 0;
 
-					if (operands_new.size() > 1)
+					if (!operands_new.empty())  // x was popped from operands_new earlier
 					{
 						std::string y = operands_new.top();
 						operands_new.pop();
 
-						int idx_y = y[y.size() - 1] - '0';
-
-						int val_y = 0;
-						if (idx_y <= N)
+						if (buffer.empty())
 						{
-							val_y = N - idx_y;
+							if (y == "0")
+							{
+								bool_y = 0;
+							}
+							else if (y == "1")
+							{
+								bool_y = 1;
+							}
 						}
 						else
 						{
-							val_y = N_initial - idx_y;
+							int idx_y = y[y.size() - 1] - '0';
+
+							int val_y = 0;
+							if (idx_y <= N)
+							{
+								val_y = N - idx_y;
+							}
+							else 
+							{
+								val_y = N_initial - idx_y;
+							}
+
+							bool_y = buffer[val_y];
+
+							if (y[0] == '~') { bool_y = !bool_y; };
+
+							if (y == "0")
+							{
+								bool_y = 0;
+							}
+							else if (y == "1")
+							{
+								bool_y = 1;
+							}
 						}
-
-						bool_y = buffer[val_y];
-
-						if (y[0] == '~') { bool_y = !bool_y; };
 					}
 					else
 					{
@@ -494,11 +661,11 @@ std::string BooleanExpression::table()
 					{
 						func_bool.push(bool_x || bool_y);
 					}
-					else if (op == ops[3])  // '+'
+					else if (op_new == ops[3])  // '+'
 					{
 						func_bool.push(bool_x ^ bool_y);
 					}
-					else if (op == ops[8])  // '='
+					else if (op_new == ops[8])  // '='
 					{
 						func_bool.push(bool_x == bool_y);
 					}
@@ -560,7 +727,14 @@ std::string BooleanExpression::table()
 		save_buffer(buffer);
 
 		// Add the bool function value to the truth table
-		res.push_back(func_bool.top() ? '1' : '0');
+		if (func_bool.empty())
+		{
+			res.append(operands.top());  // if it is '1' or 0' or xi w/o '~'
+		}
+		else
+		{
+			res.push_back(func_bool.top() ? '1' : '0');
+		}
 	}
 
 	return BooleanExpression(res.c_str());
