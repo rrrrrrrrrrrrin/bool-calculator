@@ -32,8 +32,6 @@ public:
 		: formula_(str)
 	{
 		// TODO: Check formula for validity
-
-		// TODO: Add parentheses for expressions (based on priority) ?
 		
 	}
 

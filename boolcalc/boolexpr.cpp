@@ -1,4 +1,5 @@
 ﻿#include "boolexpr.h"
+#include <numeric>  // for std::accumulate
 #include <algorithm>  // for std::sort
 #include <iostream>
 
@@ -237,15 +238,15 @@ BooleanExpression BooleanExpression::cnf()
 	}
 
 	bool first = true;
-	bool conjunction1 = false;
-	bool conjunction2 = false;
+	bool disjunction1 = false;
+	bool disjunction2 = false;
 
 	// The first buffer is at idx 0 in buffers; func_bool for the first buffer is at idx 0 in res (result of truth table)
 	for (size_t i = 0; i < res.length(); i++)
 	{
 		if (res[i] == '0')
 		{
-			if (conjunction1)
+			if (disjunction1)
 			{
 				if (first) {
 					cnf.insert(cnf.begin(), '(');
@@ -254,7 +255,7 @@ BooleanExpression BooleanExpression::cnf()
 
 				cnf.append(") & (");
 
-				conjunction2 = true;
+				disjunction2 = true;
 			}
 
 			std::vector<int> buffer = buffers[i];
@@ -290,11 +291,11 @@ BooleanExpression BooleanExpression::cnf()
 			cnf.push_back('x');
 			cnf.push_back(vals_[0]);
 
-			conjunction1 = true;
+			disjunction1 = true;
 		}
 	}
 
-	if (conjunction2) { cnf.push_back(')'); }
+	if (disjunction2) { cnf.push_back(')'); }
 
 	BooleanExpression result_cnf(cnf.c_str());
 	return result_cnf;
@@ -406,8 +407,46 @@ BooleanExpression BooleanExpression::zhegalkin()
 		auto sort_func = [](char val1, char val2) { return (val1 - '0') > (val2 - '0'); };
 		std::sort(vals_.begin(), vals_.end(), sort_func);
 	}
+	else
+	{
+		zh = res;
+		BooleanExpression result_zh(zh.c_str());
+		return result_zh;
+	}
 
+	/*
+		The polinomial's size is the buffer's size
+		
+		The first buffer is at idx 0 in buffers; func_bool for the first buffer is at idx 0 in res (result of truth table).
+		Buffers and res are in an ascending order
+		
+		Variables are sorted by indexes in an ascending order in buffer (max i (x_i) bool value is at position 0 in buffer, etc.)
+		
+		buffer: idxs: 0 <- max variable, N-1 <- min variable
+		vals_: idxs: 0 <- max var, N-1 <- min var
+	*/
 
+	std::stack<bool> A;  // coefficients
+
+	bool base = res[0];
+
+	// bool a_1000 = a_1000 = !f if base (all base) = 1, a = 1 if base = 0
+
+	A.push(base);
+
+	for (size_t i = 1; i < res.length(); i++)
+	{
+		bool f = res[i];
+
+		if (base == 1) 
+		{
+			A.push(!f);
+		}
+		else
+		{
+			A.push(f);
+		}
+	}
 
 	BooleanExpression result_dnf(zh.c_str());
 	return result_dnf;
