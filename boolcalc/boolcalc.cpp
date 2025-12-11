@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
 	if (!output)
 	{
 		std::cout << "Couldn't open output file: " << argv[3] << '\n';
-		return 3;
+		return 4;
 	}
 
 	std::string line;
@@ -45,15 +45,23 @@ int main(int argc, char* argv[]) {
 	}
 	else if (std::strcmp(action, "-cnf") == 0)
 	{
-		while (getline(input, line))
+		try
 		{
-			BooleanExpression boolexpr(line.c_str());
+			while (getline(input, line))
+			{
+				BooleanExpression boolexpr(line.c_str());
 
-			BooleanExpression res_boolexpr = boolexpr.cnf();
+				BooleanExpression res_boolexpr = boolexpr.cnf();
 
-			std::string result_function = res_boolexpr;  // via operator BooleanExpression::std::string()
+				std::string result_function = res_boolexpr;  // via operator BooleanExpression::std::string()
 
-			output << result_function << '\n';
+				output << result_function << '\n';
+			}
+		}
+		catch (const char* error)
+		{
+			std::cout << error;
+			return 0;
 		}
 	}
 	else if (std::strcmp(action, "-dnf") == 0)
@@ -81,9 +89,21 @@ int main(int argc, char* argv[]) {
 	{
 		while (getline(input, line))
 		{
-			BooleanExpression boolexpr(line.c_str());
+			try
+			{
+				BooleanExpression boolexpr(line.c_str());
 
-			boolexpr.zhegalkin();
+				BooleanExpression res_boolexpr = boolexpr.zhegalkin();
+
+				std::string result_function = res_boolexpr;  // via operator BooleanExpression::std::string()
+
+				output << result_function << '\n';
+			}
+			catch (const char* error)
+			{
+				std::cout << error;
+				return 0;
+			}
 		}
 	}
 	else if (std::strcmp(action, "-isfull") == 0)
@@ -93,7 +113,7 @@ int main(int argc, char* argv[]) {
 	else
 	{
 		std::cout << "Unknown action\nUse boolcalc -h or boolcalc ? for help\n";
-		return 4;
+		return 0;
 	}
 
 

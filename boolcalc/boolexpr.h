@@ -2,6 +2,8 @@
 #include <string>
 #include <vector>
 #include <stack>
+#include <algorithm>
+#include <cctype>
 
 /*
 		Для представления булевских выражений можно написать класс `BooleanExpression`,
@@ -29,12 +31,9 @@ public:
 	BooleanExpression(const char* str)
 		: formula_(str)
 	{
-		// Check formula for validity
+		// TODO: Check formula for validity
 
-		/*for (size_t i = 0; i < formula_.length(); i++)
-		{
-
-		}*/
+		// TODO: Add parentheses for expressions (based on priority) ?
 		
 	}
 

@@ -396,7 +396,23 @@ BooleanExpression BooleanExpression::dnf()
 
 BooleanExpression BooleanExpression::zhegalkin()
 {
-	return BooleanExpression("pass");
+	std::string zh;
+
+	std::string res = table();
+	// => called void save_buffer(...) => saved a buffer in std::vector<std::vector<int>> buffers;
+	// and occured variables in std::vector<char> vals
+
+	// Sort vals_ by int values of contents in an descending order
+	if (!vals_.empty())
+	{
+		auto sort_func = [](char val1, char val2) { return (val1 - '0') > (val2 - '0'); };
+		std::sort(vals_.begin(), vals_.end(), sort_func);
+	}
+
+
+
+	BooleanExpression result_dnf(zh.c_str());
+	return result_dnf;
 }
 
 void BooleanExpression::save_vals(std::vector<char> vals)
@@ -519,16 +535,8 @@ std::string BooleanExpression::table()
 
 		std::stack<bool> func_bool;
 
-		// Construct a formula
-		while (!operators.empty())
+		if (operators.empty())
 		{
-			char op = operators.top();
-
-			if (op == ops[0])
-			{
-				push_negation(operators, operands);  // => operators.pop()
-			}
-
 			std::stack<char> operators_new;
 			std::stack<std::string> operands_new;
 
@@ -638,7 +646,7 @@ std::string BooleanExpression::table()
 							{
 								val_y = N - idx_y;
 							}
-							else 
+							else
 							{
 								val_y = N_initial - idx_y;
 							}
@@ -684,52 +692,221 @@ std::string BooleanExpression::table()
 					operators_new.pop();
 				}
 			}
-
-			if (func_bool.size() > 1)
+		}
+		else
+		{
+			// Construct a formula
+			while (!operators.empty())
 			{
-				if (op != ops[0])  // if op == ops[0] ('~'), operators already popped it
+				char op = operators.top();
+
+				if (op == ops[0])
 				{
-					op = operators.top();
-					operators.pop();
+					push_negation(operators, operands);  // => operators.pop()
 				}
 
-				bool x = func_bool.top();
-				func_bool.pop();
+				std::stack<char> operators_new;
+				std::stack<std::string> operands_new;
 
-				bool y = func_bool.top();
-				func_bool.pop();
+				int temp1 = 0;
+				std::vector<char> vals_temp;
+				build_binary_tree(operands.top(), operators_new, operands_new, temp1, vals_temp);
+				operands.pop();
 
-				if (op == ops[1])  // '&'
+				if (operators_new.empty())  // operand didn't need to be unpacked
 				{
-					func_bool.push(x && y);
+					push_bool_x(operands_new, func_bool, buffer, N, N_initial);
 				}
-				else if (op == ops[2]) // 'v'
+
+				while (!operators_new.empty())
 				{
-					func_bool.push(x || y);
+					char op_new = operators_new.top();
+
+					if (op_new == ops[0])
+					{
+						push_negation(operators_new, operands_new);  // => operators_new.pop(), pushed a new (negated) operand to operands_new
+					}
+
+					if (operators_new.empty())  // if negation was applied above, push the new negated operand to func_bool
+					{
+						push_bool_x(operands_new, func_bool, buffer, N, N_initial);
+					}
+					else
+					{
+						op_new = operators_new.top();  // negation was part of the operand, take another operator to move forward
+
+						bool bool_x = 0;
+
+						if (!operands_new.empty())
+						{
+							std::string x = operands_new.top();
+							operands_new.pop();
+
+							if (buffer.empty())
+							{
+								if (x == "0")
+								{
+									bool_x = 0;
+								}
+								else if (x == "1")
+								{
+									bool_x = 1;
+								}
+							}
+							else
+							{
+								int idx_x = x[x.size() - 1] - '0';
+
+								int val_x = 0;
+								if (idx_x <= N)
+								{
+									val_x = N - idx_x;
+								}
+								else
+								{
+									val_x = N_initial - idx_x;
+								}
+
+								bool_x = buffer[val_x];
+
+								if (x[0] == '~') { bool_x = !bool_x; };
+
+								if (x == "0")
+								{
+									bool_x = 0;
+								}
+								else if (x == "1")
+								{
+									bool_x = 1;
+								}
+							}
+						}
+						else
+						{
+							bool_x = func_bool.top();
+							func_bool.pop();
+						}
+
+						bool bool_y = 0;
+
+						if (!operands_new.empty())  // x was popped from operands_new earlier
+						{
+							std::string y = operands_new.top();
+							operands_new.pop();
+
+							if (buffer.empty())
+							{
+								if (y == "0")
+								{
+									bool_y = 0;
+								}
+								else if (y == "1")
+								{
+									bool_y = 1;
+								}
+							}
+							else
+							{
+								int idx_y = y[y.size() - 1] - '0';
+
+								int val_y = 0;
+								if (idx_y <= N)
+								{
+									val_y = N - idx_y;
+								}
+								else
+								{
+									val_y = N_initial - idx_y;
+								}
+
+								bool_y = buffer[val_y];
+
+								if (y[0] == '~') { bool_y = !bool_y; };
+
+								if (y == "0")
+								{
+									bool_y = 0;
+								}
+								else if (y == "1")
+								{
+									bool_y = 1;
+								}
+							}
+						}
+						else
+						{
+							bool_y = func_bool.top();
+							func_bool.pop();
+						}
+
+						// The operand is unpacked by build_binary_tree() => op_new is either '&', 'v', '+' or '='
+						if (op_new == ops[1])  // '&'
+						{
+							func_bool.push(bool_x && bool_y);
+						}
+						else if (op_new == ops[2]) // 'v'
+						{
+							func_bool.push(bool_x || bool_y);
+						}
+						else if (op_new == ops[3])  // '+'
+						{
+							func_bool.push(bool_x ^ bool_y);
+						}
+						else if (op_new == ops[8])  // '='
+						{
+							func_bool.push(bool_x == bool_y);
+						}
+
+						operators_new.pop();
+					}
 				}
-				else if (op == ops[3])  // '+'
+
+				if (func_bool.size() > 1)
 				{
-					func_bool.push(x ^ y);
-				}
-				else if (op == ops[4])  // '|'
-				{
-					func_bool.push(!x || !y);
-				}
-				else if (op == ops[5])  // '^'
-				{
-					func_bool.push(!x && !y);
-				}
-				else if (op == ops[6])  // '<'
-				{
-					func_bool.push(x || !y);
-				}
-				else if (op == ops[7])  // '>'
-				{
-					func_bool.push(!x || y);
-				}
-				else if (op == ops[8])  // '='
-				{
-					func_bool.push(x == y);
+					if (op != ops[0])  // if op == ops[0] ('~'), operators already popped it
+					{
+						op = operators.top();
+						operators.pop();
+					}
+
+					bool x = func_bool.top();
+					func_bool.pop();
+
+					bool y = func_bool.top();
+					func_bool.pop();
+
+					if (op == ops[1])  // '&'
+					{
+						func_bool.push(x && y);
+					}
+					else if (op == ops[2]) // 'v'
+					{
+						func_bool.push(x || y);
+					}
+					else if (op == ops[3])  // '+'
+					{
+						func_bool.push(x ^ y);
+					}
+					else if (op == ops[4])  // '|'
+					{
+						func_bool.push(!x || !y);
+					}
+					else if (op == ops[5])  // '^'
+					{
+						func_bool.push(!x && !y);
+					}
+					else if (op == ops[6])  // '<'
+					{
+						func_bool.push(x || !y);
+					}
+					else if (op == ops[7])  // '>'
+					{
+						func_bool.push(!x || y);
+					}
+					else if (op == ops[8])  // '='
+					{
+						func_bool.push(x == y);
+					}
 				}
 			}
 		}
