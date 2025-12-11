@@ -1,0 +1,9 @@
+x1 v x2 v x3
+x1 v x2 v x3 v x4
+~x1 v ~x2 v ~x3
+x1 v x2 v x3
+x1 v x2 v x3 v x4
+~x1 v ~x2 v ~x3
+x1 v x2 v x3
+x1 v x2 v x3 v x4
+~x1 v ~x2 v ~x3

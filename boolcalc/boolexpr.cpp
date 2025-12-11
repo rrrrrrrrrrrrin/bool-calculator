@@ -1,4 +1,4 @@
-#include "boolexpr.h"
+ï»¿#include "boolexpr.h"
 #include <algorithm>  // for std::sort
 #include <iostream>
 
@@ -134,7 +134,7 @@ void BooleanExpression::build_binary_tree(std::string formula, std::stack<char>&
 			char op_current = s;
 
 			// The lesser the index, the higher the priority
-			// op_previous is the previous operand, op_current is the current operand, s — we push to operators
+			// op_previous is the previous operand, op_current is the current operand, s ï¿½ we push to operators
 			while (std::find(ops.begin(), ops.end(), op_previous) < std::find(ops.begin(), ops.end(), op_current))
 			{
 				if (op_previous == ops[0])
@@ -146,12 +146,10 @@ void BooleanExpression::build_binary_tree(std::string formula, std::stack<char>&
 				else
 				{
 					push_operand(operators, operands, op_previous);
-
-					op_current = op_previous;  // if op_current == op_previous, it won't push anything
 				}
 
-				if (!operators.empty()) 
-				{ 
+				if (!operators.empty())
+				{
 					op_previous = operators.top();
 				}
 				else
@@ -215,7 +213,7 @@ BooleanExpression BooleanExpression::cnf()
 	std::string cnf;
 
 	/*
-		Constructing a cnf: take disjunctions of variables (xi type) in the power of true or false respectfully 
+		Constructing a cnf: take disjunctions of variables (xi type) in the power of true or false respectfully
 		(if in the buffer for xi, 1 is saved => ~xi),
 		when the function is FALSE in the truth table (for that need to know that iteration's buffer)
 		Take a conjunction of all these disjunctions (... v ...) & (... v ...) (if there are several)
