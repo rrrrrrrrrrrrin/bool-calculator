@@ -1,6 +1,5 @@
 ﻿#include "boolexpr.h"
 #include <algorithm>  // for std::sort, std::reverse
-#include <iostream>
 
 std::string BooleanExpression::de_morgan_law(std::string x)
 {
@@ -328,25 +327,14 @@ BooleanExpression BooleanExpression::dnf()
 		return result_dnf;
 	}
 
-	bool first = true;
-	bool conjunction1 = false;
-	bool conjunction2 = false;
-
 	// The first buffer is at idx 0 in buffers; func_bool for the first buffer is at idx 0 in res (result of truth table)
 	for (size_t i = 0; i < res.length(); i++)
 	{
 		if (res[i] == '1')
 		{
-			if (conjunction1)
+			if (!dnf.empty())
 			{
-				if (first) {
-					dnf.insert(dnf.begin(), '(');
-					first = false;
-				}
-
-				dnf.append(") v (");
-
-				conjunction2 = true;
+				dnf.append(" v ");
 			}
 
 			std::vector<int> buffer = buffers[i];
@@ -381,12 +369,8 @@ BooleanExpression BooleanExpression::dnf()
 			}
 			dnf.push_back('x');
 			dnf.push_back(vals_[0]);
-
-			conjunction1 = true;
 		}
 	}
-
-	if (conjunction2) { dnf.push_back(')'); }
 
 	BooleanExpression result_dnf(dnf.c_str());
 	return result_dnf;
@@ -515,14 +499,6 @@ BooleanExpression BooleanExpression::zhegalkin()
 		}
 
 		variables.push_back(x);
-
-		// ========================
-		// Zhegalkin polinomial contains conjunctions
-		if (x.size() > 2)
-		{
-			is_not_lineal = true;
-		}
-		// ========================
 	}
 
 	std::vector<std::string> zh;
@@ -533,6 +509,12 @@ BooleanExpression BooleanExpression::zhegalkin()
 		if (row[i] == 1)
 		{
 			zh.push_back(variables[i]);
+
+			// ======================== Zhegalkin polynomial contains conjunctions ========================
+			if (!is_not_lineal && variables[i].size() > 2)
+			{
+				is_not_lineal = true;
+			}
 		}
 	}
 
@@ -729,7 +711,7 @@ std::string BooleanExpression::table()
 							int idx_x = x[x.size() - 1] - '0';
 
 							int val_x = 0;
-							if (idx_x <= N)
+							if (idx_x < N)
 							{
 								val_x = N - idx_x;
 							}
@@ -781,7 +763,7 @@ std::string BooleanExpression::table()
 							int idx_y = y[y.size() - 1] - '0';
 
 							int val_y = 0;
-							if (idx_y <= N)
+							if (idx_y < N)
 							{
 								val_y = N - idx_y;
 							}
@@ -897,7 +879,7 @@ std::string BooleanExpression::table()
 								int idx_x = x[x.size() - 1] - '0';
 
 								int val_x = 0;
-								if (idx_x <= N)
+								if (idx_x < N)
 								{
 									val_x = N - idx_x;
 								}
@@ -949,7 +931,7 @@ std::string BooleanExpression::table()
 								int idx_y = y[y.size() - 1] - '0';
 
 								int val_y = 0;
-								if (idx_y <= N)
+								if (idx_y < N)
 								{
 									val_y = N - idx_y;
 								}

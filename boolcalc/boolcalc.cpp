@@ -60,7 +60,7 @@ int main(int argc, char* argv[]) {
 		}
 		catch (const char* error)
 		{
-			std::cout << error;
+			output << error << '\n';
 			return 0;
 		}
 	}
@@ -80,7 +80,7 @@ int main(int argc, char* argv[]) {
 			}
 			catch (const char* error)
 			{
-				std::cout << error;
+				output << error << '\n';
 				return 0;
 			}
 		}
@@ -101,7 +101,7 @@ int main(int argc, char* argv[]) {
 			}
 			catch (const char* error)
 			{
-				std::cout << error;
+				output << error << '\n';
 				return 0;
 			}
 		}
@@ -131,7 +131,7 @@ int main(int argc, char* argv[]) {
 			}
 			catch (const char* error)
 			{
-				std::cout << error;
+				output << error << '\n';
 				return 0;
 			}
 	}

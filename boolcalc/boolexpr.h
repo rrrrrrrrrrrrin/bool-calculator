@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <stack>
+#include <cstring>
 
 /*
 		Для представления булевских выражений можно написать класс `BooleanExpression`,
