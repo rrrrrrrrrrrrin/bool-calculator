@@ -2,8 +2,6 @@
 #include <string>
 #include <vector>
 #include <stack>
-#include <algorithm>
-#include <cctype>
 
 /*
 		Для представления булевских выражений можно написать класс `BooleanExpression`,
@@ -47,7 +45,11 @@ public:
 
 	BooleanExpression cnf();
 	BooleanExpression dnf();
-	BooleanExpression zhegalkin();
+
+	bool is_not_lineal = false;  // function is not lineal
+
+	// Constructed by a triangle method
+	BooleanExpression zhegalkin(); 
 
 	std::vector<std::vector<int>> buffers;
 	void save_buffer(std::vector<int> buffer);
@@ -59,5 +61,5 @@ public:
 		return formula_;
 	}
 
-	bool isFullSystem(const std::vector<BooleanExpression>&);
+	bool isFullSystem(const std::vector<BooleanExpression>& system);
 };

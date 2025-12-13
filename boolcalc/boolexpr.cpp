@@ -1,6 +1,5 @@
 ﻿#include "boolexpr.h"
-#include <numeric>  // for std::accumulate
-#include <algorithm>  // for std::sort
+#include <algorithm>  // for std::sort, std::reverse
 #include <iostream>
 
 std::string BooleanExpression::de_morgan_law(std::string x)
@@ -224,7 +223,7 @@ BooleanExpression BooleanExpression::cnf()
 	// => called void save_buffer(...) => saved a buffer in std::vector<std::vector<int>> buffers;
 	// and occured variables in std::vector<char> vals
 
-	// Sort vals_ by int values of contents in an descending order
+	// Sort vals_ by int values of contents in a descending order
 	if (!vals_.empty())
 	{
 		auto sort_func = [](char val1, char val2) { return (val1 - '0') > (val2 - '0'); };
@@ -261,7 +260,7 @@ BooleanExpression BooleanExpression::cnf()
 			std::vector<int> buffer = buffers[i];
 			size_t size = buffer.size();
 
-			// Variables are sorted by indexes in an ascending order (max i (x_i) bool value is at position 0 in buffer, etc.)
+			// Variables are sorted by indexes in a descending  order (max i (x_i) bool value is at position 0 in buffer, etc.)
 
 			/*
 				buffer: idxs: 0 <- max variable, N-1 <- min variable
@@ -316,7 +315,7 @@ BooleanExpression BooleanExpression::dnf()
 	// => called void save_buffer(...) => saved a buffer in std::vector<std::vector<int>> buffers;
 	// and occured variables in std::vector<char> vals
 
-	// Sort vals_ by int values of contents in an descending order
+	// Sort vals_ by int values of contents in a descending order
 	if (!vals_.empty())
 	{
 		auto sort_func = [](char val1, char val2) { return (val1 - '0') > (val2 - '0'); };
@@ -353,7 +352,7 @@ BooleanExpression BooleanExpression::dnf()
 			std::vector<int> buffer = buffers[i];
 			size_t size = buffer.size();
 
-			// Variables are sorted by indexes in an ascending order (max i (x_i) bool value is at position 0 in buffer, etc.)
+			// Variables are sorted by indexes in a descending order (max i (x_i) bool value is at position 0 in buffer, etc.)
 
 			/*
 				buffer: idxs: 0 <- max variable, N-1 <- min variable
@@ -393,15 +392,54 @@ BooleanExpression BooleanExpression::dnf()
 	return result_dnf;
 }
 
+bool sort_func(std::string val1, std::string val2)
+{
+	// If the strings are of different sizes, they are already correctly sorted for the polynomial => both strings should be the same size for comparison
+	// If the polynomial contains 1 in the beginning (1 + x1 + ...), don't compare it and leave at its place
+
+	if (val1.size() != val2.size() || (val1 == "1")) { return false; }  // don't change the order of vals; used with std::stable_sort
+
+	while ((val1[val1.size() - 1] - '0') == (val2[val2.size() - 1] - '0'))
+	{
+		// val: x1 & x2 & ... & xi
+
+		size_t space1 = val1.rfind(' ');
+		size_t space2 = val2.rfind(' ');
+
+		if ((val1.find(' ') != std::string::npos) && (val2.find(' ') != std::string::npos))
+		{
+			// minus 2 to trim the space and x; to point at the last variable's index
+			val1 = val1.substr(0, space1 - 2);
+			val2 = val2.substr(0, space2 - 2);
+		}
+		else
+		{
+			break;
+		}
+	}
+
+	return (val1[val1.size() - 1] - '0') < (val2[val2.size() - 1] - '0');
+}
+
 BooleanExpression BooleanExpression::zhegalkin()
 {
-	std::string zh;
+	/*
+		The polynomial's size is the buffer's size
+
+		The first buffer is at idx 0 in buffers; func_bool for the first buffer is at idx 0 in res (result of truth table).
+		Buffers and res are in an ascending order
+
+		Variables are sorted by indexes in a descending order in buffer (max i (x_i) bool value is at position 0 in buffer, etc.)
+
+		buffer: idxs: 0 <- max variable, N-1 <- min variable
+		vals_: idxs: 0 <- max var, N-1 <- min var
+	*/
 
 	std::string res = table();
 	// => called void save_buffer(...) => saved a buffer in std::vector<std::vector<int>> buffers;
 	// and occured variables in std::vector<char> vals
 
-	// Sort vals_ by int values of contents in an descending order
+	// Sort vals_ by int values of contents in a descending order
 	if (!vals_.empty())
 	{
 		auto sort_func = [](char val1, char val2) { return (val1 - '0') > (val2 - '0'); };
@@ -409,46 +447,109 @@ BooleanExpression BooleanExpression::zhegalkin()
 	}
 	else
 	{
-		zh = res;
-		BooleanExpression result_zh(zh.c_str());
+		BooleanExpression result_zh(res.c_str());
 		return result_zh;
 	}
 
-	/*
-		The polinomial's size is the buffer's size
-		
-		The first buffer is at idx 0 in buffers; func_bool for the first buffer is at idx 0 in res (result of truth table).
-		Buffers and res are in an ascending order
-		
-		Variables are sorted by indexes in an ascending order in buffer (max i (x_i) bool value is at position 0 in buffer, etc.)
-		
-		buffer: idxs: 0 <- max variable, N-1 <- min variable
-		vals_: idxs: 0 <- max var, N-1 <- min var
-	*/
+	// 1) Create a vector of variables for Zhegalking polynomial
+	std::vector<std::string> variables;
 
-	std::stack<bool> A;  // coefficients
+	variables.push_back(res.substr(0, 1));  // res[0] for buffer[size-1] (00...00)
 
-	bool base = res[0];
+	// 2) Create stacks for the table's columns, 
+	//    save the first symbol and add to the vector, i.e. the first row
 
-	// bool a_1000 = a_1000 = !f if base (all base) = 1, a = 1 if base = 0
+	std::vector<bool> col;
 
-	A.push(base);
+	for (size_t i = 0; i < res.length(); i++)
+	{
+		col.push_back(static_cast<bool>(res[i] - '0'));
+	}
+
+	std::vector<bool> row;
+	row.push_back(col[0]);
 
 	for (size_t i = 1; i < res.length(); i++)
 	{
-		bool f = res[i];
+		std::vector<bool> col_temp;
 
-		if (base == 1) 
+		while (col.size() != 1)
 		{
-			A.push(!f);
+			bool last_elem = col.back();
+			col.pop_back();
+
+			col_temp.insert(col_temp.begin(), last_elem ^ col.back());
 		}
-		else
+
+		col = col_temp;
+		row.push_back(col[0]);
+
+		std::vector<int> buffer = buffers[i];
+		size_t size = buffer.size();
+
+		std::string x;
+
+		for (size_t j = size - 1; j > 0; j--)
 		{
-			A.push(f);
+			if (buffer[j] == 1)
+			{
+				if (!x.empty())
+				{
+					x.append(" & ");
+				}
+
+				x.push_back('x');
+				x.push_back(vals_[j]);
+			}
+		}
+
+		if (buffer[0] == 1)
+		{
+			if (!x.empty())
+			{
+				x.append(" & ");
+			}
+
+			x.push_back('x');
+			x.push_back(vals_[0]);
+		}
+
+		variables.push_back(x);
+
+		// ========================
+		if (x.size() > 2)
+		{
+			is_not_lineal = true;
+		}
+		// ========================
+	}
+
+	std::vector<std::string> zh;
+
+	// 3) Parse through the row, if row[i] == 1 =>
+	for (size_t i = 0; i < row.size(); i++)
+	{
+		if (row[i] == 1)
+		{
+			zh.push_back(variables[i]);
 		}
 	}
 
-	BooleanExpression result_dnf(zh.c_str());
+	// 4) Sort Zhegalkin polynomial
+	std::stable_sort(zh.begin(), zh.end(), sort_func);
+
+	std::string zh_res;
+	for (size_t i = 0; i < zh.size(); i++)
+	{
+		if (!zh_res.empty())
+		{
+			zh_res.append(" + ");
+		}
+
+		zh_res.append(zh[i]);
+	}
+
+	BooleanExpression result_dnf(zh_res.c_str());
 	return result_dnf;
 }
 
@@ -965,7 +1066,112 @@ std::string BooleanExpression::table()
 	return BooleanExpression(res.c_str());
 }
 
-bool BooleanExpression::isFullSystem(const std::vector<BooleanExpression>&)
+bool BooleanExpression::isFullSystem(const std::vector<BooleanExpression>& system)
 {
-	return false;
+	// The system is full when at least one function doesn't belong to one of the 5 classes, listed below
+	bool is_full_system = 0;
+
+	bool classes[5] = { 1 };
+
+	for (size_t i = 0; i < system.size(); i++)
+	{
+		BooleanExpression func = system[i];
+
+		std::string res = func.table();  // => std::vector<std::vector<int>> buffers
+
+		// 1) f(0) != 0
+		if (classes[0] == 1 && res[0] != 0)
+		{
+			classes[0] = 0;
+		}
+
+		// 2) f(1) != 1
+		if (classes[1] == 1 && res[res.size() - 1] != 1)
+		{
+			classes[1] = 0;
+		}
+
+		// 3) Function is not lineal
+		//    => Zhegalkin polnomial contains conjunctions 
+		//    => the polynomial's degree is greater than one
+		func.zhegalkin();
+		if (classes[2] == 1 && !is_not_lineal)
+		{
+			classes[2] = 0;
+		}
+
+		// 4) Function is not monotonic
+
+		// buffers: 00..00, 00..01, .., 10..00, .., 11..11
+
+		bool is_increasing = 0;
+		bool is_decreasing = 0;
+		bool is_constant = 0;
+
+		// Function is only increasing
+		if (res[0] < res[1])
+		{
+			is_increasing = 1;
+		}
+		// Function is only decreasing
+		else if (res[0] > res[1])
+		{
+			is_decreasing = 1;
+		}
+		// Function is constant (res[0] == res[1])
+		else
+		{
+			is_constant = 1;
+		}
+
+		bool is_not_monotonic = 0;
+
+		for (size_t j = 2; j < res.size(); j++)
+		{
+			if (res[j] < res[j + 1] && !is_increasing)
+			{
+				is_not_monotonic = 0;
+			}
+			else if (res[j] > res[j + 1] && !is_decreasing)
+			{
+				is_not_monotonic = 0;
+			}
+			else if (res[j] == res[j + 1] && !is_constant)
+			{
+				is_not_monotonic = 0;
+			}
+
+			if (is_not_monotonic)
+			{
+				break;
+			}
+		}
+
+		if (is_not_monotonic)
+		{
+			classes[3] = 0;
+		}
+
+		// 5) Function is not self-dual
+		std::string reversed = res;
+		std::reverse(reversed.begin(), reversed.end());
+
+		if (classes[4] == 1 && res != reversed)
+		{
+			classes[4] = 0;
+		}
+	}
+
+	int sum = 0;
+	for (bool c : classes)
+	{
+		sum += static_cast<int>(c);
+	}
+
+	if (sum == 0)
+	{
+		is_full_system = 1;
+	}
+
+	return is_full_system;
 }

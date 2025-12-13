@@ -108,7 +108,32 @@ int main(int argc, char* argv[]) {
 	}
 	else if (std::strcmp(action, "-isfull") == 0)
 	{
-		
+			try
+			{
+				BooleanExpression boolexpr("");
+
+				std::vector<BooleanExpression> system;
+
+				while (getline(input, line))
+				{
+					BooleanExpression func(line.c_str());
+					system.push_back(func);
+				}
+
+				if (boolexpr.isFullSystem(system))
+				{
+					output << "yes" << '\n';
+				}
+				else
+				{
+					output << "no" << '\n';
+				}
+			}
+			catch (const char* error)
+			{
+				std::cout << error;
+				return 0;
+			}
 	}
 	else
 	{
