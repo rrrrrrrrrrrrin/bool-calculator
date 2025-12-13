@@ -115,7 +115,7 @@ void BooleanExpression::build_binary_tree(std::string formula, std::stack<char>&
 		}
 
 		// if the symbol is an operator
-		else if (std::find(ops.begin(), ops.end(), s) != ops.end())
+		if (std::find(ops.begin(), ops.end(), s) != ops.end())
 		{
 			if (operators.empty())
 			{
@@ -1064,7 +1064,7 @@ std::string BooleanExpression::table()
 		}
 	}
 
-	return BooleanExpression(res.c_str());
+	return res;
 }
 
 bool BooleanExpression::isFullSystem(const std::vector<BooleanExpression>& system)

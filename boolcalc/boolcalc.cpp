@@ -9,27 +9,27 @@ int main(int argc, char* argv[]) {
 	{
 		std::cout << "Usage: boolcalc -action input_file output_file\n";
 		std::cout << "Actions\t: -table, -cnf (technically pcnf), -dnf (technically pdnf), -zh, -isfull";
-		return 1;
+		return 0;
 	}
 
 	if (argc != 4)
 	{
 		std::cout << "Use boolcalc -h or boolcalc ? for help\n";
-		return 2;
+		return 1;
 	}
 
 	std::ifstream input(argv[2]);
 	if (!input)
 	{
 		std::cout << "Couldn't open input file: " << argv[2] << '\n';
-		return 3;
+		return 2;
 	}
 
 	std::ofstream output(argv[3]);
 	if (!output)
 	{
 		std::cout << "Couldn't open output file: " << argv[3] << '\n';
-		return 4;
+		return 3;
 	}
 
 	std::string line;
@@ -138,7 +138,7 @@ int main(int argc, char* argv[]) {
 	else
 	{
 		std::cout << "Unknown action\nUse boolcalc -h or boolcalc ? for help\n";
-		return 0;
+		return 4;
 	}
 
 
