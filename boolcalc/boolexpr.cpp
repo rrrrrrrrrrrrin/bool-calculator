@@ -517,6 +517,7 @@ BooleanExpression BooleanExpression::zhegalkin()
 		variables.push_back(x);
 
 		// ========================
+		// Zhegalkin polinomial contains conjunctions
 		if (x.size() > 2)
 		{
 			is_not_lineal = true;
@@ -1071,7 +1072,8 @@ bool BooleanExpression::isFullSystem(const std::vector<BooleanExpression>& syste
 	// The system is full when at least one function doesn't belong to one of the 5 classes, listed below
 	bool is_full_system = 0;
 
-	bool classes[5] = { 1 };
+	bool classes[5];
+	std::memset(classes, 1, 5);
 
 	for (size_t i = 0; i < system.size(); i++)
 	{
@@ -1080,13 +1082,13 @@ bool BooleanExpression::isFullSystem(const std::vector<BooleanExpression>& syste
 		std::string res = func.table();  // => std::vector<std::vector<int>> buffers
 
 		// 1) f(0) != 0
-		if (classes[0] == 1 && res[0] != 0)
+		if (classes[0] == 1 && res[0] != '0')
 		{
 			classes[0] = 0;
 		}
 
 		// 2) f(1) != 1
-		if (classes[1] == 1 && res[res.size() - 1] != 1)
+		if (classes[1] == 1 && res[res.size() - 1] != '1')
 		{
 			classes[1] = 0;
 		}
@@ -1094,62 +1096,41 @@ bool BooleanExpression::isFullSystem(const std::vector<BooleanExpression>& syste
 		// 3) Function is not lineal
 		//    => Zhegalkin polnomial contains conjunctions 
 		//    => the polynomial's degree is greater than one
-		func.zhegalkin();
-		if (classes[2] == 1 && !is_not_lineal)
+
+		// Calling func.zhegalkin() would create a copy of func anyway, BUT then we would check is_not_lineal of original func,
+		// which is false by default, before calling zhegalkin method
+		BooleanExpression func_copy = func;
+		func_copy.zhegalkin();
+
+		if (classes[2] == 1 && func_copy.is_not_lineal)
 		{
 			classes[2] = 0;
 		}
 
 		// 4) Function is not monotonic
 
-		// buffers: 00..00, 00..01, .., 10..00, .., 11..11
-
-		bool is_increasing = 0;
-		bool is_decreasing = 0;
-		bool is_constant = 0;
-
-		// Function is only increasing
-		if (res[0] < res[1])
-		{
-			is_increasing = 1;
-		}
-		// Function is only decreasing
-		else if (res[0] > res[1])
-		{
-			is_decreasing = 1;
-		}
-		// Function is constant (res[0] == res[1])
-		else
-		{
-			is_constant = 1;
-		}
+		// buffers: 00..00, 00..01, .., 10..00, .., 11..11 => the function is non-decreasing left to right of res (truth table)
 
 		bool is_not_monotonic = 0;
 
-		for (size_t j = 2; j < res.size(); j++)
+		for (size_t j = 0; j < res.size() - 1; j++)
 		{
-			if (res[j] < res[j + 1] && !is_increasing)
+			if (res[j] == res[j + 1]) { continue; }
+
+			// Function is decreasing 
+			if (res[j] > res[j + 1])
 			{
-				is_not_monotonic = 0;
-			}
-			else if (res[j] > res[j + 1] && !is_decreasing)
-			{
-				is_not_monotonic = 0;
-			}
-			else if (res[j] == res[j + 1] && !is_constant)
-			{
-				is_not_monotonic = 0;
+				is_not_monotonic = 1;
 			}
 
 			if (is_not_monotonic)
 			{
+				if (classes[3] == 1)
+				{
+					classes[3] = 0;
+				}
 				break;
 			}
-		}
-
-		if (is_not_monotonic)
-		{
-			classes[3] = 0;
 		}
 
 		// 5) Function is not self-dual

@@ -46,7 +46,7 @@ public:
 	BooleanExpression cnf();
 	BooleanExpression dnf();
 
-	bool is_not_lineal = false;  // function is not lineal
+	bool is_not_lineal = false;  // for a function
 
 	// Constructed by a triangle method
 	BooleanExpression zhegalkin(); 
