@@ -120,7 +120,7 @@ int main(int argc, char* argv[]) {
 					system.push_back(func);
 				}
 
-				if (boolexpr.isFullSystem(system))
+				if (BooleanExpression::isFullSystem(system))
 				{
 					output << "yes" << '\n';
 				}

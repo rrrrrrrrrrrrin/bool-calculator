@@ -1,4 +1,5 @@
-﻿#pragma once
+﻿#ifndef BOOLEXPR_H
+
 #include <string>
 #include <vector>
 #include <stack>
@@ -74,11 +75,13 @@ public:
 				}
 
 				char op = operators.top();
-				while ((op = operators.top()) != '(')
+				while (op != '(')
 				{
 					// expression = (operand operator operand) would be pushed to operands as a new operand
 					operators.pop();
 					operands.pop();
+
+					op = operators.top();
 				}
 				operators.pop();
 				expr = false;  // expression was closed
@@ -94,7 +97,7 @@ public:
 					char s1 = formula_[++i];
 
 					// ================================ Incorrect operand input ================================
-					if (!std::isdigit(s1))
+					if (std::isdigit(s1) == 0)
 					{
 						throw "error";
 					}
@@ -105,7 +108,7 @@ public:
 				operands.push(op1);
 
 				// ============================== Missing operators between operands + Missing ')' bracket ==============================
-				if (operands.size() - 1 != operators.size() - expr)  // if '(' is in operators, it will not be included in operators' size
+				if (operands.size() - 1 != operators.size() - static_cast<unsigned long>(expr))  // if '(' is in operators, it will not be included in operators' size
 				{
 					throw "error";
 				}
@@ -119,7 +122,8 @@ public:
 			++i;
 		}
 
-		// ======================== If left operands and operators don't match accordingly + Missing ')' bracket (expression was never closed) ========================
+		// ======================== If left in the end operands and operators don't match accordingly
+		//                          + Missing ')' bracket (expression was never closed) ========================
 		if (!operands.empty() && !operators.empty() && operands.size() - 1 != operators.size())
 		{
 			throw "error";
@@ -145,8 +149,9 @@ public:
 	BooleanExpression zhegalkin(); 
 
 	std::vector<std::vector<int>> buffers;
-	void save_buffer(std::vector<int> buffer);
+	void save_buffer(const std::vector<int>& buffer);
 
+	void table_helper(std::stack<std::string>& operands, std::stack<bool>& func_bool, const std::vector<int>& buffer, int N, int N_initial);
 	std::string table();
 
 	operator std::string() const 
@@ -154,5 +159,93 @@ public:
 		return formula_;
 	}
 
-	bool isFullSystem(const std::vector<BooleanExpression>& system);
+	static bool isFullSystem(const std::vector<BooleanExpression>& system)
+	{
+		// The system is full when at least one function doesn't belong to one of the 5 classes, listed below
+		bool is_full_system = false;
+
+		bool classes[5];
+		std::memset(classes, 1, 5);
+
+		for (size_t i = 0; i < system.size(); i++)
+		{
+			BooleanExpression func = system[i];
+
+			std::string res = func.table();  // => std::vector<std::vector<int>> buffers
+
+			// 1) f(0) != 0
+			if (classes[0] && res[0] != '0')
+			{
+				classes[0] = false;
+			}
+
+			// 2) f(1) != 1
+			if (classes[1] && res[res.size() - 1] != '1')
+			{
+				classes[1] = false;
+			}
+
+			// 3) Function is not lineal
+			//    => Zhegalkin polnomial contains conjunctions 
+			//    => the polynomial's degree is greater than one
+
+			// Calling func.zhegalkin() would create a copy of func anyway, BUT then we would check is_not_lineal of original func,
+			// which is false by default, before calling zhegalkin method
+			BooleanExpression func_copy = func;
+			func_copy.zhegalkin();
+
+			if (classes[2] && func_copy.is_not_lineal)
+			{
+				classes[2] = false;
+			}
+
+			// 4) Function is not monotonic
+
+			// buffers: 00..00, 00..01, .., 10..00, .., 11..11 => the function is non-decreasing left to right of res (truth table)
+
+			bool is_not_monotonic = false;
+
+			for (size_t j = 0; j < res.size() - 1; j++)
+			{
+				// Function is decreasing 
+				if (res[j] > res[j + 1])
+				{
+					is_not_monotonic = true;
+				}
+
+				if (is_not_monotonic)
+				{
+					if (classes[3])
+					{
+						classes[3] = false;
+					}
+					break;
+				}
+			}
+
+			// 5) Function is not self-dual
+			std::string reversed = res;
+			std::reverse(reversed.begin(), reversed.end());
+
+			if (classes[4] && res != reversed)
+			{
+				classes[4] = false;
+			}
+		}
+
+		int sum = 0;
+		for (bool c : classes)
+		{
+			sum += static_cast<int>(c);
+		}
+
+		if (sum == 0)
+		{
+			is_full_system = true;
+		}
+
+		return is_full_system;
+	}
 };
+
+#endif

@@ -167,7 +167,7 @@ void BooleanExpression::build_binary_tree(std::string formula, std::stack<char>&
 		else if (s == ')')
 		{
 			char op = operators.top();
-			while ((op = operators.top()) != '(')
+			while (op != '(')
 			{
 				if (op == ops[0])
 				{
@@ -177,6 +177,8 @@ void BooleanExpression::build_binary_tree(std::string formula, std::stack<char>&
 				{
 					push_operand(operators, operands, op);
 				}
+
+				op = operators.top();
 			}
 			operators.pop();  // pop '('
 		}
@@ -506,7 +508,7 @@ BooleanExpression BooleanExpression::zhegalkin()
 	// 3) Parse through the row, if row[i] == 1 =>
 	for (size_t i = 0; i < row.size(); i++)
 	{
-		if (row[i] == 1)
+		if (static_cast<int>(row[i]) == 1)
 		{
 			zh.push_back(variables[i]);
 
@@ -538,10 +540,10 @@ BooleanExpression BooleanExpression::zhegalkin()
 
 void BooleanExpression::save_vals(std::vector<char> vals)
 {
-	vals_ = vals;
+	vals_ = std::move(vals);
 }
 
-void BooleanExpression::save_buffer(std::vector<int> buffer)
+void BooleanExpression::save_buffer(const std::vector<int>& buffer)
 {
 	buffers.push_back(buffer);
 }
@@ -563,22 +565,20 @@ static void to_binary(int i, std::vector<int>& buffer, int N)
 	}
 }
 
-void push_bool_x(std::stack<std::string>& operands, std::stack<bool>& func_bool, std::vector<int> buffer, int N, int N_initial)
+void push_bool(bool& bool_x, std::stack<std::string>& operands_new, std::stack<bool>& func_bool, std::vector<int> buffer, int N, int N_initial)
 {
-	std::string x = operands.top();
-	operands.pop();
-
-	bool bool_x = 0;
+	std::string x = operands_new.top();
+	operands_new.pop();
 
 	if (buffer.empty())
 	{
 		if (x == "0")
 		{
-			bool_x = 0;
+			bool_x = false;
 		}
 		else if (x == "1")
 		{
-			bool_x = 1;
+			bool_x = true;
 		}
 	}
 	else
@@ -587,30 +587,111 @@ void push_bool_x(std::stack<std::string>& operands, std::stack<bool>& func_bool,
 
 		// Variable's number (min is at index N, max is at 0) to apply the appropriate bool value from buffer
 		int val_x = 0;
-		if (idx_x <= N)
+		if (idx_x < N)
 		{
 			val_x = N - idx_x;
 		}
-		else  // idx_x > N
+		else  // idx_x >= N
 		{
 			val_x = N_initial - idx_x;
 		}
 
-		bool_x = buffer[val_x];
+		bool_x = (buffer[val_x] != 0);
 
 		if (x[0] == '~') { bool_x = !bool_x; };
 
 		if (x == "0")
 		{
-			bool_x = 0;
+			bool_x = false;
 		}
 		else if (x == "1")
 		{
-			bool_x = 1;
+			bool_x = true;
 		}
 	}
+}
 
-	func_bool.push(bool_x);
+void BooleanExpression::table_helper(std::stack<std::string>& operands, std::stack<bool>& func_bool, const std::vector<int>& buffer, int N, int N_initial)
+{
+	std::stack<char> operators_new;
+	std::stack<std::string> operands_new;
+
+	int temp1 = 0;
+	std::vector<char> vals_temp;
+	build_binary_tree(operands.top(), operators_new, operands_new, temp1, vals_temp);
+	operands.pop();
+
+	if (operators_new.empty())  // operand didn't need to be unpacked
+	{
+		bool bool_x = false;
+		push_bool(bool_x, operands_new, func_bool, buffer, N, N_initial);
+		func_bool.push(bool_x);
+	}
+
+	while (!operators_new.empty())
+	{
+		char op_new = operators_new.top();
+
+		if (op_new == ops[0])
+		{
+			push_negation(operators_new, operands_new);  // => operators_new.pop(), pushed a new (negated) operand to operands_new
+		}
+
+		if (operators_new.empty())  // if negation was applied above, push the new negated operand to func_bool
+		{
+			bool bool_x = false;
+			push_bool(bool_x, operands_new, func_bool, buffer, N, N_initial);
+			func_bool.push(bool_x);
+		}
+		else
+		{
+			op_new = operators_new.top();  // negation was part of the operand, take another operator to move forward
+
+			bool bool_x = false;
+
+			if (!operands_new.empty())
+			{
+				push_bool(bool_x, operands_new, func_bool, buffer, N, N_initial);
+			}
+			else
+			{
+				bool_x = func_bool.top();
+				func_bool.pop();
+			}
+
+			bool bool_y = false;
+
+			if (!operands_new.empty())  // x was popped from operands_new earlier
+			{
+				push_bool(bool_y, operands_new, func_bool, buffer, N, N_initial);
+			}
+			else
+			{
+				bool_y = func_bool.top();
+				func_bool.pop();
+			}
+
+			// The operand is unpacked by build_binary_tree() => op_new is either '&', 'v', '+' or '='
+			if (op_new == ops[1])  // '&'
+			{
+				func_bool.push(bool_x && bool_y);
+			}
+			else if (op_new == ops[2]) // 'v'
+			{
+				func_bool.push(bool_x || bool_y);
+			}
+			else if (op_new == ops[3])  // '+'
+			{
+				func_bool.push(bool_x ^ bool_y);
+			}
+			else if (op_new == ops[8])  // '='
+			{
+				func_bool.push(bool_x == bool_y);
+			}
+
+			operators_new.pop();
+		}
+	}
 }
 
 std::string BooleanExpression::table()
@@ -625,7 +706,7 @@ std::string BooleanExpression::table()
 
 	save_vals(vals);
 
-	int operand_amount = vals.size();
+	int operand_amount = static_cast<int>(vals.size());
 
 	int N_initial = N;
 
@@ -658,161 +739,7 @@ std::string BooleanExpression::table()
 
 		if (operators.empty())
 		{
-			std::stack<char> operators_new;
-			std::stack<std::string> operands_new;
-
-			int temp1 = 0;
-			std::vector<char> vals_temp;
-			build_binary_tree(operands.top(), operators_new, operands_new, temp1, vals_temp);
-			operands.pop();
-
-			if (operators_new.empty())  // operand didn't need to be unpacked
-			{
-				push_bool_x(operands_new, func_bool, buffer, N, N_initial);
-			}
-
-			while (!operators_new.empty())
-			{
-				char op_new = operators_new.top();
-
-				if (op_new == ops[0])
-				{
-					push_negation(operators_new, operands_new);  // => operators_new.pop(), pushed a new (negated) operand to operands_new
-				}
-
-				if (operators_new.empty())  // if negation was applied above, push the new negated operand to func_bool
-				{
-					push_bool_x(operands_new, func_bool, buffer, N, N_initial);
-				}
-				else
-				{
-					op_new = operators_new.top();  // negation was part of the operand, take another operator to move forward
-
-					bool bool_x = 0;
-
-					if (!operands_new.empty())
-					{
-						std::string x = operands_new.top();
-						operands_new.pop();
-
-						if (buffer.empty())
-						{
-							if (x == "0")
-							{
-								bool_x = 0;
-							}
-							else if (x == "1")
-							{
-								bool_x = 1;
-							}
-						}
-						else
-						{
-							int idx_x = x[x.size() - 1] - '0';
-
-							int val_x = 0;
-							if (idx_x < N)
-							{
-								val_x = N - idx_x;
-							}
-							else
-							{
-								val_x = N_initial - idx_x;
-							}
-
-							bool_x = buffer[val_x];
-
-							if (x[0] == '~') { bool_x = !bool_x; };
-
-							if (x == "0")
-							{
-								bool_x = 0;
-							}
-							else if (x == "1")
-							{
-								bool_x = 1;
-							}
-						}
-					}
-					else
-					{
-						bool_x = func_bool.top();
-						func_bool.pop();
-					}
-
-					bool bool_y = 0;
-
-					if (!operands_new.empty())  // x was popped from operands_new earlier
-					{
-						std::string y = operands_new.top();
-						operands_new.pop();
-
-						if (buffer.empty())
-						{
-							if (y == "0")
-							{
-								bool_y = 0;
-							}
-							else if (y == "1")
-							{
-								bool_y = 1;
-							}
-						}
-						else
-						{
-							int idx_y = y[y.size() - 1] - '0';
-
-							int val_y = 0;
-							if (idx_y < N)
-							{
-								val_y = N - idx_y;
-							}
-							else
-							{
-								val_y = N_initial - idx_y;
-							}
-
-							bool_y = buffer[val_y];
-
-							if (y[0] == '~') { bool_y = !bool_y; };
-
-							if (y == "0")
-							{
-								bool_y = 0;
-							}
-							else if (y == "1")
-							{
-								bool_y = 1;
-							}
-						}
-					}
-					else
-					{
-						bool_y = func_bool.top();
-						func_bool.pop();
-					}
-
-					// The operand is unpacked by build_binary_tree() => op_new is either '&', 'v', '+' or '='
-					if (op_new == ops[1])  // '&'
-					{
-						func_bool.push(bool_x && bool_y);
-					}
-					else if (op_new == ops[2]) // 'v'
-					{
-						func_bool.push(bool_x || bool_y);
-					}
-					else if (op_new == ops[3])  // '+'
-					{
-						func_bool.push(bool_x ^ bool_y);
-					}
-					else if (op_new == ops[8])  // '='
-					{
-						func_bool.push(bool_x == bool_y);
-					}
-
-					operators_new.pop();
-				}
-			}
+			table_helper(operands, func_bool, buffer, N, N_initial);
 		}
 		else
 		{
@@ -826,161 +753,7 @@ std::string BooleanExpression::table()
 					push_negation(operators, operands);  // => operators.pop()
 				}
 
-				std::stack<char> operators_new;
-				std::stack<std::string> operands_new;
-
-				int temp1 = 0;
-				std::vector<char> vals_temp;
-				build_binary_tree(operands.top(), operators_new, operands_new, temp1, vals_temp);
-				operands.pop();
-
-				if (operators_new.empty())  // operand didn't need to be unpacked
-				{
-					push_bool_x(operands_new, func_bool, buffer, N, N_initial);
-				}
-
-				while (!operators_new.empty())
-				{
-					char op_new = operators_new.top();
-
-					if (op_new == ops[0])
-					{
-						push_negation(operators_new, operands_new);  // => operators_new.pop(), pushed a new (negated) operand to operands_new
-					}
-
-					if (operators_new.empty())  // if negation was applied above, push the new negated operand to func_bool
-					{
-						push_bool_x(operands_new, func_bool, buffer, N, N_initial);
-					}
-					else
-					{
-						op_new = operators_new.top();  // negation was part of the operand, take another operator to move forward
-
-						bool bool_x = 0;
-
-						if (!operands_new.empty())
-						{
-							std::string x = operands_new.top();
-							operands_new.pop();
-
-							if (buffer.empty())
-							{
-								if (x == "0")
-								{
-									bool_x = 0;
-								}
-								else if (x == "1")
-								{
-									bool_x = 1;
-								}
-							}
-							else
-							{
-								int idx_x = x[x.size() - 1] - '0';
-
-								int val_x = 0;
-								if (idx_x < N)
-								{
-									val_x = N - idx_x;
-								}
-								else
-								{
-									val_x = N_initial - idx_x;
-								}
-
-								bool_x = buffer[val_x];
-
-								if (x[0] == '~') { bool_x = !bool_x; };
-
-								if (x == "0")
-								{
-									bool_x = 0;
-								}
-								else if (x == "1")
-								{
-									bool_x = 1;
-								}
-							}
-						}
-						else
-						{
-							bool_x = func_bool.top();
-							func_bool.pop();
-						}
-
-						bool bool_y = 0;
-
-						if (!operands_new.empty())  // x was popped from operands_new earlier
-						{
-							std::string y = operands_new.top();
-							operands_new.pop();
-
-							if (buffer.empty())
-							{
-								if (y == "0")
-								{
-									bool_y = 0;
-								}
-								else if (y == "1")
-								{
-									bool_y = 1;
-								}
-							}
-							else
-							{
-								int idx_y = y[y.size() - 1] - '0';
-
-								int val_y = 0;
-								if (idx_y < N)
-								{
-									val_y = N - idx_y;
-								}
-								else
-								{
-									val_y = N_initial - idx_y;
-								}
-
-								bool_y = buffer[val_y];
-
-								if (y[0] == '~') { bool_y = !bool_y; };
-
-								if (y == "0")
-								{
-									bool_y = 0;
-								}
-								else if (y == "1")
-								{
-									bool_y = 1;
-								}
-							}
-						}
-						else
-						{
-							bool_y = func_bool.top();
-							func_bool.pop();
-						}
-
-						// The operand is unpacked by build_binary_tree() => op_new is either '&', 'v', '+' or '='
-						if (op_new == ops[1])  // '&'
-						{
-							func_bool.push(bool_x && bool_y);
-						}
-						else if (op_new == ops[2]) // 'v'
-						{
-							func_bool.push(bool_x || bool_y);
-						}
-						else if (op_new == ops[3])  // '+'
-						{
-							func_bool.push(bool_x ^ bool_y);
-						}
-						else if (op_new == ops[8])  // '='
-						{
-							func_bool.push(bool_x == bool_y);
-						}
-
-						operators_new.pop();
-					}
-				}
+				table_helper(operands, func_bool, buffer, N, N_initial);
 
 				if (func_bool.size() > 1)
 				{
@@ -1047,94 +820,4 @@ std::string BooleanExpression::table()
 	}
 
 	return res;
-}
-
-bool BooleanExpression::isFullSystem(const std::vector<BooleanExpression>& system)
-{
-	// The system is full when at least one function doesn't belong to one of the 5 classes, listed below
-	bool is_full_system = 0;
-
-	bool classes[5];
-	std::memset(classes, 1, 5);
-
-	for (size_t i = 0; i < system.size(); i++)
-	{
-		BooleanExpression func = system[i];
-
-		std::string res = func.table();  // => std::vector<std::vector<int>> buffers
-
-		// 1) f(0) != 0
-		if (classes[0] == 1 && res[0] != '0')
-		{
-			classes[0] = 0;
-		}
-
-		// 2) f(1) != 1
-		if (classes[1] == 1 && res[res.size() - 1] != '1')
-		{
-			classes[1] = 0;
-		}
-
-		// 3) Function is not lineal
-		//    => Zhegalkin polnomial contains conjunctions 
-		//    => the polynomial's degree is greater than one
-
-		// Calling func.zhegalkin() would create a copy of func anyway, BUT then we would check is_not_lineal of original func,
-		// which is false by default, before calling zhegalkin method
-		BooleanExpression func_copy = func;
-		func_copy.zhegalkin();
-
-		if (classes[2] == 1 && func_copy.is_not_lineal)
-		{
-			classes[2] = 0;
-		}
-
-		// 4) Function is not monotonic
-
-		// buffers: 00..00, 00..01, .., 10..00, .., 11..11 => the function is non-decreasing left to right of res (truth table)
-
-		bool is_not_monotonic = 0;
-
-		for (size_t j = 0; j < res.size() - 1; j++)
-		{
-			if (res[j] == res[j + 1]) { continue; }
-
-			// Function is decreasing 
-			if (res[j] > res[j + 1])
-			{
-				is_not_monotonic = 1;
-			}
-
-			if (is_not_monotonic)
-			{
-				if (classes[3] == 1)
-				{
-					classes[3] = 0;
-				}
-				break;
-			}
-		}
-
-		// 5) Function is not self-dual
-		std::string reversed = res;
-		std::reverse(reversed.begin(), reversed.end());
-
-		if (classes[4] == 1 && res != reversed)
-		{
-			classes[4] = 0;
-		}
-	}
-
-	int sum = 0;
-	for (bool c : classes)
-	{
-		sum += static_cast<int>(c);
-	}
-
-	if (sum == 0)
-	{
-		is_full_system = 1;
-	}
-
-	return is_full_system;
 }
